@@ -58,17 +58,17 @@ incus exec "${CONTAINER_NAME}" -- bash -c '
     > /etc/apt/sources.list.d/duckdb.list
 
   apt-get update -qq
-  apt-get install -y -qq postgresql-16 timescaledb-2-postgresql-16 >/dev/null 2>&1
+  apt-get install -y -qq postgresql-18 timescaledb-2-postgresql-18 >/dev/null 2>&1
 
   # pg_duckdb (optional — analytics queries fall back to regular Postgres)
-  apt-get install -y -qq postgresql-16-pg-duckdb >/dev/null 2>&1 || echo "WARN: pg_duckdb not available, skipping"
+  apt-get install -y -qq postgresql-18-pg-duckdb >/dev/null 2>&1 || echo "WARN: pg_duckdb not available, skipping"
 
   # Configure TimescaleDB
   timescaledb-tune --quiet --yes
 
   # Configure Postgres to accept connections from host
-  PG_HBA="/etc/postgresql/16/main/pg_hba.conf"
-  PG_CONF="/etc/postgresql/16/main/postgresql.conf"
+  PG_HBA="/etc/postgresql/18/main/pg_hba.conf"
+  PG_CONF="/etc/postgresql/18/main/postgresql.conf"
 
   # Listen on all interfaces
   sed -i "s/#listen_addresses = .*/listen_addresses = '\''*'\''/" "$PG_CONF"

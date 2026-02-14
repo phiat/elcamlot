@@ -155,7 +155,7 @@ info:
 
 # Tail Postgres logs
 pg-logs:
-    incus exec carscope-pg -- tail -f /var/log/postgresql/postgresql-16-main.log
+    incus exec carscope-pg -- tail -f /var/log/postgresql/postgresql-18-main.log
 
 # View OCaml analytics logs
 ocaml-logs:
@@ -212,6 +212,36 @@ pg-snapshots:
 pg-restore name="backup":
     incus snapshot restore carscope-pg {{name}}
     @echo "Restored from snapshot: {{name}}"
+
+# --- Versions ---
+
+# Check versions of all tools in the stack
+versions:
+    @echo "=== Host Tools ==="
+    @printf "  Elixir:       " && elixir --version 2>/dev/null | tail -1 || echo "not found"
+    @printf "  Erlang/OTP:   " && erl -eval 'io:format("~s~n", [erlang:system_info(otp_release)]), halt().' -noshell 2>/dev/null || echo "not found"
+    @printf "  Mix Phoenix:  " && cd carscope && mix deps 2>/dev/null | grep "phoenix " | awk '{print $3}' || echo "not found"
+    @printf "  Mix LiveView: " && cd carscope && mix deps 2>/dev/null | grep "phoenix_live_view" | awk '{print $3}' || echo "not found"
+    @printf "  Mix Req:      " && cd carscope && mix deps 2>/dev/null | grep "req " | awk '{print $3}' || echo "not found"
+    @printf "  Tailwind CSS: " && grep 'version:' carscope/config/config.exs | grep tailwind | head -1 | sed 's/.*"\(.*\)".*/\1/' || echo "not found"
+    @printf "  esbuild:      " && grep 'version:' carscope/config/config.exs | grep esbuild | head -1 | sed 's/.*"\(.*\)".*/\1/' || echo "not found"
+    @echo ""
+    @echo "=== Containers ==="
+    @printf "  PostgreSQL:   " && incus exec carscope-pg -- psql --version 2>/dev/null | awk '{print $3}' || echo "container not running"
+    @printf "  TimescaleDB:  " && incus exec carscope-pg -- sudo -u postgres psql -d carscope -t -c "SELECT extversion FROM pg_extension WHERE extname='timescaledb';" 2>/dev/null | tr -d ' ' || echo "container not running"
+    @printf "  pg_duckdb:    " && incus exec carscope-pg -- sudo -u postgres psql -d carscope -t -c "SELECT extversion FROM pg_extension WHERE extname='pg_duckdb';" 2>/dev/null | tr -d ' ' || echo "not installed"
+    @printf "  OCaml:        " && incus exec carscope-ocaml -- su - analytics -c "ocaml --version" 2>/dev/null || echo "container not running"
+    @printf "  Dream:        " && incus exec carscope-ocaml -- su - analytics -c "opam show dream --field=version 2>/dev/null" 2>/dev/null || echo "container not running"
+    @echo ""
+    @echo "=== Latest Available ==="
+    @echo "  PostgreSQL:   18.2"
+    @echo "  Elixir:       1.19.5"
+    @echo "  Phoenix:      1.8.3"
+    @echo "  LiveView:     1.1.23"
+    @echo "  Tailwind CSS: 4.1.x"
+    @echo "  OCaml:        5.4.0"
+    @echo "  TimescaleDB:  2.25.0"
+    @echo "  pg_duckdb:    1.1.1"
 
 # --- Cleanup ---
 

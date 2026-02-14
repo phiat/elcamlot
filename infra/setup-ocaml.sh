@@ -51,7 +51,7 @@ incus exec "${CONTAINER_NAME}" -- bash -c '
 incus exec "${CONTAINER_NAME}" -- su - analytics -c '
   opam init --bare --disable-sandboxing --yes
 
-  opam switch create carscope 5.2.1 --yes
+  opam switch create carscope 5.4.0 --yes
 
   eval $(opam env --switch=carscope)
   opam install dream yojson ppx_deriving_yojson lwt_ppx core_unix --yes

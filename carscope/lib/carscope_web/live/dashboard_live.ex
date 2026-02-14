@@ -137,64 +137,64 @@ defmodule CarscopeWeb.DashboardLive do
   defp format_date(%DateTime{} = dt), do: Calendar.strftime(dt, "%b %d, %Y %H:%M")
   defp format_date(%NaiveDateTime{} = dt), do: Calendar.strftime(dt, "%b %d, %Y %H:%M")
 
-  defp deal_badge_class("great deal"), do: "bg-green-100 text-green-800"
-  defp deal_badge_class("good deal"), do: "bg-emerald-100 text-emerald-700"
-  defp deal_badge_class("fair price"), do: "bg-blue-100 text-blue-700"
-  defp deal_badge_class("above market"), do: "bg-yellow-100 text-yellow-800"
-  defp deal_badge_class("overpriced"), do: "bg-red-100 text-red-800"
-  defp deal_badge_class(_), do: "bg-zinc-100 text-zinc-600"
+  defp deal_badge_class("great deal"), do: "bg-success/20 text-success"
+  defp deal_badge_class("good deal"), do: "bg-success/10 text-success"
+  defp deal_badge_class("fair price"), do: "bg-info/10 text-info"
+  defp deal_badge_class("above market"), do: "bg-warning/10 text-warning"
+  defp deal_badge_class("overpriced"), do: "bg-error/10 text-error"
+  defp deal_badge_class(_), do: "bg-base-200 text-base-content/60"
 
   @impl true
   def render(assigns) do
     ~H"""
     <div class="max-w-6xl mx-auto px-4 py-8">
-      <.link navigate={~p"/"} class="text-blue-600 hover:underline text-sm">← Back to search</.link>
+      <.link navigate={~p"/"} class="text-primary hover:underline text-sm">← Back to search</.link>
 
       <div class="mt-4 mb-8">
         <h1 class="text-3xl font-bold">
           {@vehicle.year} {@vehicle.make} {@vehicle.model}
         </h1>
-        <p :if={@vehicle.trim} class="text-zinc-500">{@vehicle.trim}</p>
+        <p :if={@vehicle.trim} class="text-base-content/60">{@vehicle.trim}</p>
       </div>
 
       <%!-- Stats Cards --%>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-zinc-500">Avg Price</div>
+        <div class="bg-base-100 rounded-lg shadow p-4">
+          <div class="text-sm text-base-content/60">Avg Price</div>
           <div class="text-2xl font-bold">{format_price(@stats.avg_price)}</div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-zinc-500">Min Price</div>
-          <div class="text-2xl font-bold text-green-600">{format_price(@stats.min_price)}</div>
+        <div class="bg-base-100 rounded-lg shadow p-4">
+          <div class="text-sm text-base-content/60">Min Price</div>
+          <div class="text-2xl font-bold text-success">{format_price(@stats.min_price)}</div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-zinc-500">Max Price</div>
-          <div class="text-2xl font-bold text-red-600">{format_price(@stats.max_price)}</div>
+        <div class="bg-base-100 rounded-lg shadow p-4">
+          <div class="text-sm text-base-content/60">Max Price</div>
+          <div class="text-2xl font-bold text-error">{format_price(@stats.max_price)}</div>
         </div>
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="text-sm text-zinc-500">Data Points</div>
+        <div class="bg-base-100 rounded-lg shadow p-4">
+          <div class="text-sm text-base-content/60">Data Points</div>
           <div class="text-2xl font-bold">{@stats.count}</div>
         </div>
       </div>
 
       <%!-- Market Comparison (from pg_duckdb) --%>
-      <div :if={@market_position} class="bg-white rounded-lg shadow p-6 mb-8">
+      <div :if={@market_position} class="bg-base-100 rounded-lg shadow p-6 mb-8">
         <h2 class="text-lg font-semibold mb-4">Market Comparison</h2>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
-            <div class="text-sm text-zinc-500">Your Avg</div>
+            <div class="text-sm text-base-content/60">Your Avg</div>
             <div class="text-xl font-bold">{format_price(@market_position["vehicle_avg_price"])}</div>
           </div>
           <div>
-            <div class="text-sm text-zinc-500">Market Avg</div>
+            <div class="text-sm text-base-content/60">Market Avg</div>
             <div class="text-xl font-bold">{format_price(@market_position["market_avg"])}</div>
           </div>
           <div>
-            <div class="text-sm text-zinc-500">Z-Score</div>
+            <div class="text-sm text-base-content/60">Z-Score</div>
             <div class="text-xl font-bold">
               {if z = @market_position["z_score"], do: "#{z}", else: "—"}
             </div>
-            <div class="text-xs text-zinc-500">
+            <div class="text-xs text-base-content/60">
               <%= cond do %>
                 <% (@market_position["z_score"] || 0) < -1 -> %>
                   Well below market
@@ -206,80 +206,80 @@ defmodule CarscopeWeb.DashboardLive do
             </div>
           </div>
           <div>
-            <div class="text-sm text-zinc-500">Market Size</div>
+            <div class="text-sm text-base-content/60">Market Size</div>
             <div class="text-xl font-bold">{@market_position["market_count"]} listings</div>
           </div>
         </div>
         <div class="mt-3 text-right">
-          <.link navigate={~p"/market"} class="text-blue-600 hover:underline text-sm">
+          <.link navigate={~p"/market"} class="text-primary hover:underline text-sm">
             View full market analytics &rarr;
           </.link>
         </div>
       </div>
 
       <%!-- Analytics (from OCaml service) --%>
-      <div :if={@analysis} class="bg-white rounded-lg shadow p-6 mb-8">
+      <div :if={@analysis} class="bg-base-100 rounded-lg shadow p-6 mb-8">
         <h2 class="text-lg font-semibold mb-4">Analytics (OxCaml)</h2>
         <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
           <div>
-            <span class="text-zinc-500">Median</span>
+            <span class="text-base-content/60">Median</span>
             <div class="font-mono">{format_price(@analysis["median"])}</div>
           </div>
           <div>
-            <span class="text-zinc-500">Std Dev</span>
+            <span class="text-base-content/60">Std Dev</span>
             <div class="font-mono">{format_price(@analysis["std_dev"])}</div>
           </div>
           <div>
-            <span class="text-zinc-500">IQR</span>
+            <span class="text-base-content/60">IQR</span>
             <div class="font-mono">{format_price(@analysis["iqr"])}</div>
           </div>
           <div>
-            <span class="text-zinc-500">P10</span>
+            <span class="text-base-content/60">P10</span>
             <div class="font-mono">{format_price(@analysis["p10"])}</div>
           </div>
           <div>
-            <span class="text-zinc-500">P25</span>
+            <span class="text-base-content/60">P25</span>
             <div class="font-mono">{format_price(@analysis["p25"])}</div>
           </div>
           <div>
-            <span class="text-zinc-500">P90</span>
+            <span class="text-base-content/60">P90</span>
             <div class="font-mono">{format_price(@analysis["p90"])}</div>
           </div>
         </div>
       </div>
 
       <%!-- Depreciation (from OCaml service) --%>
-      <div :if={@depreciation} class="bg-white rounded-lg shadow p-6 mb-8">
+      <div :if={@depreciation} class="bg-base-100 rounded-lg shadow p-6 mb-8">
         <h2 class="text-lg font-semibold mb-4">
           Depreciation Curve
-          <span :if={@depreciation["model"]} class="text-xs font-normal text-zinc-400 ml-2">
+          <span :if={@depreciation["model"]} class="text-xs font-normal text-base-content/40 ml-2">
             ({@depreciation["model"]} model, R²={@depreciation["r_squared"]})
           </span>
         </h2>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
           <div>
-            <span class="text-zinc-500">Annual Depreciation</span>
-            <div class="text-xl font-bold text-orange-600">{@depreciation["annual_depreciation_pct"]}%</div>
+            <span class="text-base-content/60">Annual Depreciation</span>
+            <div class="text-xl font-bold text-warning">{@depreciation["annual_depreciation_pct"]}%</div>
           </div>
           <div>
-            <span class="text-zinc-500">Estimated Initial Price</span>
+            <span class="text-base-content/60">Estimated Initial Price</span>
             <div class="font-mono">{format_price(@depreciation["initial_price"])}</div>
           </div>
           <div>
-            <span class="text-zinc-500">Data Points Used</span>
+            <span class="text-base-content/60">Data Points Used</span>
             <div class="font-mono">{@depreciation["data_points"]}</div>
           </div>
           <div :if={@depreciation["alt_r_squared"]}>
-            <span class="text-zinc-500">Alt Model R²</span>
-            <div class="font-mono text-zinc-400">{@depreciation["alt_r_squared"]}</div>
+            <span class="text-base-content/60">Alt Model R²</span>
+            <div class="font-mono text-base-content/40">{@depreciation["alt_r_squared"]}</div>
           </div>
         </div>
         <div :if={@depreciation["predictions"]} class="border-t pt-4">
-          <h3 class="text-sm font-medium text-zinc-500 mb-2">Predicted Future Prices</h3>
+          <h3 class="text-sm font-medium text-base-content/60 mb-2">Predicted Future Prices</h3>
           <div class="flex gap-4">
             <%= for pred <- @depreciation["predictions"] do %>
-              <div class="bg-zinc-50 rounded px-3 py-2 text-center">
-                <div class="text-xs text-zinc-500">+{pred["years_from_now"]}yr</div>
+              <div class="bg-base-200 rounded px-3 py-2 text-center">
+                <div class="text-xs text-base-content/60">+{pred["years_from_now"]}yr</div>
                 <div class="font-mono font-bold">{format_price(pred["predicted_price"])}</div>
               </div>
             <% end %>
@@ -288,13 +288,13 @@ defmodule CarscopeWeb.DashboardLive do
       </div>
 
       <%!-- Price History --%>
-      <div class="bg-white rounded-lg shadow p-6 mb-8">
+      <div class="bg-base-100 rounded-lg shadow p-6 mb-8">
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-lg font-semibold">Price History</h2>
           <button
             phx-click="refresh-prices"
             disabled={@searching}
-            class="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+            class="bg-primary text-primary-content px-4 py-1.5 rounded text-sm hover:bg-primary/80 disabled:opacity-50"
           >
             <%= if @searching, do: "Fetching...", else: "Fetch New Prices" %>
           </button>
@@ -315,7 +315,7 @@ defmodule CarscopeWeb.DashboardLive do
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
-              <tr class="border-b text-left text-zinc-500">
+              <tr class="border-b text-left text-base-content/60">
                 <th class="py-2 pr-4">Date</th>
                 <th class="py-2 pr-4">Price</th>
                 <th class="py-2 pr-4">Mileage</th>
@@ -326,8 +326,8 @@ defmodule CarscopeWeb.DashboardLive do
             </thead>
             <tbody>
               <%= for {snap, idx} <- Enum.take(@snapshots, 25) |> Enum.with_index() do %>
-                <tr class="border-b hover:bg-zinc-50">
-                  <td class="py-2 pr-4 text-zinc-500">{format_date(snap.time)}</td>
+                <tr class="border-b hover:bg-base-200">
+                  <td class="py-2 pr-4 text-base-content/60">{format_date(snap.time)}</td>
                   <td class="py-2 pr-4 font-mono font-bold">{format_price(snap.price_cents)}</td>
                   <td class="py-2 pr-4">
                     <%= if snap.mileage do %>
@@ -350,7 +350,7 @@ defmodule CarscopeWeb.DashboardLive do
                     </span>
                   </td>
                   <td class="py-2">
-                    <a :if={snap.url} href={snap.url} target="_blank" class="text-blue-600 hover:underline">
+                    <a :if={snap.url} href={snap.url} target="_blank" class="text-primary hover:underline">
                       View →
                     </a>
                   </td>

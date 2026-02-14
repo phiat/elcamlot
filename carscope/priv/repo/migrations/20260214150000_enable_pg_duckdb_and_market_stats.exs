@@ -2,8 +2,15 @@ defmodule Carscope.Repo.Migrations.EnablePgDuckdbAndMarketStats do
   use Ecto.Migration
 
   def up do
-    # pg_duckdb extension — requires package installed in container
-    execute("CREATE EXTENSION IF NOT EXISTS pg_duckdb")
+    # pg_duckdb extension — optional, skip if not installed
+    execute("""
+    DO $$
+    BEGIN
+      CREATE EXTENSION IF NOT EXISTS pg_duckdb;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE NOTICE 'pg_duckdb not available, skipping';
+    END $$;
+    """)
 
     # Materialized view for cached market stats
     execute("""

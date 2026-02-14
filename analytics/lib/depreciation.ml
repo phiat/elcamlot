@@ -162,7 +162,7 @@ let analyze json =
           ("decay_rate", `Float lambda);
           ("annual_depreciation_pct", `Float (Float.round (annual_pct *. 10.0) /. 10.0));
           ("r_squared", `Float (Float.round (exp_r2 *. 1000.0) /. 1000.0));
-          ("predictions", `List (make_predictions (fun t -> p0 *. Float.exp (-. lambda *. t))));
+          ("predictions", `List (make_predictions predict));
           ("data_points", `Int n_pts);
           ("alt_r_squared", `Float (Float.round (lin_r2 *. 1000.0) /. 1000.0));
         ]

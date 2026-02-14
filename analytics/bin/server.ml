@@ -4,7 +4,7 @@
 let respond_with_result result =
   match result with
   | `Assoc fields when List.mem_assoc "error" fields ->
-    Dream.json ~status:`Unprocessable_Entity (Yojson.Safe.to_string result)
+    Dream.json ~status:(`Status 422) (Yojson.Safe.to_string result)
   | _ ->
     Dream.json (Yojson.Safe.to_string result)
 

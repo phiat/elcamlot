@@ -128,15 +128,15 @@ defmodule CarscopeWeb.SearchLive do
       <div class="flex justify-between items-center mb-8">
         <div>
           <h1 class="text-3xl font-bold mb-2">CarScope</h1>
-          <p class="text-zinc-500">Search for vehicles, track prices, find deals.</p>
+          <p class="text-base-content/60">Search for vehicles, track prices, find deals.</p>
         </div>
-        <.link navigate={~p"/market"} class="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 px-4 py-2 rounded-md text-sm">
+        <.link navigate={~p"/market"} class="bg-base-200 hover:bg-base-300 text-base-content/80 px-4 py-2 rounded-md text-sm">
           Market Analytics &rarr;
         </.link>
       </div>
 
       <%!-- Brave Search --%>
-      <div class="bg-white rounded-lg shadow p-6 mb-8">
+      <div class="bg-base-100 rounded-lg shadow p-6 mb-8">
         <h2 class="text-lg font-semibold mb-4">Search the Web</h2>
         <.form for={%{}} phx-submit="search" class="flex gap-3">
           <input
@@ -144,19 +144,19 @@ defmodule CarscopeWeb.SearchLive do
             name="query"
             value={@query}
             placeholder="e.g. 2021 Toyota Camry"
-            class="flex-1 rounded-md border border-zinc-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="flex-1 rounded-md border border-base-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             type="submit"
             disabled={@searching}
-            class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+            class="bg-primary text-primary-content px-6 py-2 rounded-md hover:bg-primary/80 disabled:opacity-50"
           >
             <%= if @searching, do: "Searching...", else: "Search" %>
           </button>
         </.form>
 
         <%= if @error do %>
-          <div class="mt-4 p-3 bg-red-50 text-red-700 rounded">{@error}</div>
+          <div class="mt-4 p-3 bg-error/10 text-error rounded">{@error}</div>
         <% end %>
 
         <%= if @result_count > 0 do %>
@@ -165,15 +165,15 @@ defmodule CarscopeWeb.SearchLive do
             <div id="search-results" class="space-y-3" phx-update="stream">
               <div :for={{dom_id, result} <- @streams.results} id={dom_id} class="border rounded p-3">
                 <div class="flex justify-between">
-                  <a href={result.url} target="_blank" class="text-blue-600 hover:underline font-medium">
+                  <a href={result.url} target="_blank" class="text-primary hover:underline font-medium">
                     {result.title}
                   </a>
-                  <span class="text-green-700 font-bold">
+                  <span class="text-success font-bold">
                     ${div(result.price_cents, 100) |> Integer.to_string() |> format_number()}
                   </span>
                 </div>
-                <p class="text-sm text-zinc-500 mt-1">{result.description}</p>
-                <div class="text-xs text-zinc-400 mt-1">
+                <p class="text-sm text-base-content/60 mt-1">{result.description}</p>
+                <div class="text-xs text-base-content/40 mt-1">
                   Source: {result.source}
                   <%= if result.mileage do %>
                     · {result.mileage |> Integer.to_string() |> format_number()} mi
@@ -186,14 +186,14 @@ defmodule CarscopeWeb.SearchLive do
       </div>
 
       <%!-- Vehicle Database --%>
-      <div class="bg-white rounded-lg shadow p-6">
+      <div class="bg-base-100 rounded-lg shadow p-6">
         <h2 class="text-lg font-semibold mb-4">Vehicle Database ({@vehicle_count} vehicles)</h2>
         <.form for={%{}} phx-change="search-db" class="mb-4">
           <input
             type="text"
             name="term"
             placeholder="Filter vehicles..."
-            class="w-full rounded-md border border-zinc-300 px-4 py-2"
+            class="w-full rounded-md border border-base-300 px-4 py-2"
             phx-debounce="300"
           />
         </.form>
@@ -201,7 +201,7 @@ defmodule CarscopeWeb.SearchLive do
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
-              <tr class="border-b text-left text-zinc-500">
+              <tr class="border-b text-left text-base-content/60">
                 <th class="py-2 pr-4">Year</th>
                 <th class="py-2 pr-4">Make</th>
                 <th class="py-2 pr-4">Model</th>
@@ -210,13 +210,13 @@ defmodule CarscopeWeb.SearchLive do
               </tr>
             </thead>
             <tbody id="vehicles-table" phx-update="stream">
-              <tr :for={{dom_id, vehicle} <- @streams.vehicles} id={dom_id} class="border-b hover:bg-zinc-50">
+              <tr :for={{dom_id, vehicle} <- @streams.vehicles} id={dom_id} class="border-b hover:bg-base-200">
                 <td class="py-2 pr-4">{vehicle.year}</td>
                 <td class="py-2 pr-4">{vehicle.make}</td>
                 <td class="py-2 pr-4">{vehicle.model}</td>
-                <td class="py-2 pr-4 text-zinc-500">{vehicle.trim || "—"}</td>
+                <td class="py-2 pr-4 text-base-content/60">{vehicle.trim || "—"}</td>
                 <td class="py-2">
-                  <.link navigate={~p"/vehicle/#{vehicle.id}"} class="text-blue-600 hover:underline">
+                  <.link navigate={~p"/vehicle/#{vehicle.id}"} class="text-primary hover:underline">
                     Dashboard →
                   </.link>
                 </td>

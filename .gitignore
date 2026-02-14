@@ -1,0 +1,18 @@
+# Environment
+.env
+
+# Elixir/Phoenix
+carscope/_build/
+carscope/deps/
+carscope/.elixir_ls/
+carscope/priv/static/assets/
+
+# OCaml
+analytics/_build/
+analytics/_opam/
+
+# Editor
+*.swp
+*~
+.vscode/
+.idea/

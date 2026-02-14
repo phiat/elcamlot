@@ -7,11 +7,6 @@
     Linear:      price(t) = a + b * t
 *)
 
-let float_of_json = function
-  | `Int n -> Float.of_int n
-  | `Float f -> f
-  | _ -> 0.0
-
 (** Parse ISO 8601 timestamp to approximate day number (simplified) *)
 let parse_time s =
   try
@@ -32,7 +27,7 @@ let extract_history json =
              | _ -> 0.0
            in
            let price = match List.assoc_opt "price" fs with
-             | Some v -> float_of_json v
+             | Some v -> Common.float_of_json v
              | None -> 0.0
            in
            if time > 0.0 && price > 0.0 then Some (time, price) else None
@@ -138,7 +133,7 @@ let analyze json =
         ("initial_price", `Float (Float.round p0));
         ("decay_rate", `Float lambda);
         ("annual_depreciation_pct", `Float (Float.round (annual_pct *. 10.0) /. 10.0));
-        ("r_squared", `Float (Float.round (exp_r2 *. 1000.0) /. 1000.0));
+        ("r_squared", `Float (Common.round3 exp_r2));
         ("predictions", `List (make_predictions predict));
         ("data_points", `Int n_pts);
       ]
@@ -148,7 +143,7 @@ let analyze json =
         ("model", `String "linear");
         ("initial_price", `Float (Float.round a));
         ("annual_change", `Float (Float.round b));
-        ("r_squared", `Float (Float.round (lin_r2 *. 1000.0) /. 1000.0));
+        ("r_squared", `Float (Common.round3 lin_r2));
         ("predictions", `List (make_predictions predict));
         ("data_points", `Int n_pts);
       ]
@@ -161,10 +156,10 @@ let analyze json =
           ("initial_price", `Float (Float.round p0));
           ("decay_rate", `Float lambda);
           ("annual_depreciation_pct", `Float (Float.round (annual_pct *. 10.0) /. 10.0));
-          ("r_squared", `Float (Float.round (exp_r2 *. 1000.0) /. 1000.0));
+          ("r_squared", `Float (Common.round3 exp_r2));
           ("predictions", `List (make_predictions predict));
           ("data_points", `Int n_pts);
-          ("alt_r_squared", `Float (Float.round (lin_r2 *. 1000.0) /. 1000.0));
+          ("alt_r_squared", `Float (Common.round3 lin_r2));
         ]
       else
         let predict t = a +. b *. t in
@@ -172,8 +167,8 @@ let analyze json =
           ("model", `String "linear");
           ("initial_price", `Float (Float.round a));
           ("annual_change", `Float (Float.round b));
-          ("r_squared", `Float (Float.round (lin_r2 *. 1000.0) /. 1000.0));
+          ("r_squared", `Float (Common.round3 lin_r2));
           ("predictions", `List (make_predictions predict));
           ("data_points", `Int n_pts);
-          ("alt_r_squared", `Float (Float.round (exp_r2 *. 1000.0) /. 1000.0));
+          ("alt_r_squared", `Float (Common.round3 exp_r2));
         ]

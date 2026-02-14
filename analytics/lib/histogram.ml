@@ -1,28 +1,10 @@
 (** Histogram / binned distribution — configurable buckets with density *)
 
-let float_of_json = function
-  | `Int n -> Float.of_int n
-  | `Float f -> f
-  | _ -> 0.0
-
-let int_of_json_opt = function
-  | `Int n -> Some n
-  | `Float f -> Some (Float.to_int f)
-  | _ -> None
-
-let extract_prices json =
-  match json with
-  | `Assoc fields ->
-    (match List.assoc_opt "prices" fields with
-     | Some (`List prices) -> List.map float_of_json prices
-     | _ -> [])
-  | _ -> []
-
 let extract_bins json =
   match json with
   | `Assoc fields ->
     (match List.assoc_opt "bins" fields with
-     | Some v -> int_of_json_opt v
+     | Some v -> Common.int_of_json_opt v
      | None -> None)
   | _ -> None
 
@@ -32,7 +14,7 @@ let default_bins n =
   max k 5
 
 let analyze json =
-  let prices = extract_prices json in
+  let prices = Common.extract_prices json in
   match prices with
   | [] ->
     `Assoc [("error", `String "No prices provided")]
@@ -50,7 +32,6 @@ let analyze json =
     let range = max_val -. min_val in
     let bin_width = if range < 0.001 then 1.0 else range /. Float.of_int num_bins in
 
-    (* Build bin edges and counts *)
     let bins = Array.make num_bins 0 in
     List.iter (fun price ->
       let idx = Float.to_int ((price -. min_val) /. bin_width) in
@@ -60,7 +41,6 @@ let analyze json =
 
     let fn_float = Float.of_int in
 
-    (* Find mode bin *)
     let mode_idx = ref 0 in
     let mode_count = ref 0 in
     Array.iteri (fun i c ->
@@ -70,7 +50,6 @@ let analyze json =
       end
     ) bins;
 
-    (* Check for multimodal: any bin with count >= 80% of mode that's not adjacent *)
     let threshold = Float.to_int (fn_float !mode_count *. 0.8) in
     let multimodal = Array.to_list bins
       |> List.mapi (fun i c -> (i, c))
@@ -79,21 +58,19 @@ let analyze json =
       )
     in
 
-    (* Build response *)
     let bin_data = List.init num_bins (fun i ->
       let low = min_val +. fn_float i *. bin_width in
       let high = low +. bin_width in
       let count = bins.(i) in
       let density = fn_float count /. (fn_float n *. bin_width) in
       `Assoc [
-        ("bin_low", `Float (Float.round (low *. 100.0) /. 100.0));
-        ("bin_high", `Float (Float.round (high *. 100.0) /. 100.0));
+        ("bin_low", `Float (Common.round2 low));
+        ("bin_high", `Float (Common.round2 high));
         ("count", `Int count);
         ("density", `Float density);
       ]
     ) in
 
-    (* Cumulative counts *)
     let cumulative = List.init num_bins (fun i ->
       let cum = ref 0 in
       for j = 0 to i do cum := !cum + bins.(j) done;
@@ -106,11 +83,11 @@ let analyze json =
     `Assoc [
       ("bins", `List bin_data);
       ("cumulative", `List cumulative);
-      ("bin_width", `Float (Float.round (bin_width *. 100.0) /. 100.0));
+      ("bin_width", `Float (Common.round2 bin_width));
       ("num_bins", `Int num_bins);
       ("mode_bin", `Assoc [
-        ("low", `Float (Float.round (mode_low *. 100.0) /. 100.0));
-        ("high", `Float (Float.round (mode_high *. 100.0) /. 100.0));
+        ("low", `Float (Common.round2 mode_low));
+        ("high", `Float (Common.round2 mode_high));
         ("count", `Int !mode_count);
       ]);
       ("multimodal", `Bool multimodal);

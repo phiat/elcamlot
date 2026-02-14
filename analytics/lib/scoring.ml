@@ -8,11 +8,6 @@
     - 0-19:   Overpriced
 *)
 
-let float_of_json = function
-  | `Int n -> Float.of_int n
-  | `Float f -> f
-  | _ -> 0.0
-
 let confidence n =
   if n < 5 then "low"
   else if n < 20 then "medium"
@@ -22,11 +17,11 @@ let deal_score json =
   match json with
   | `Assoc fields ->
     let price = match List.assoc_opt "price" fields with
-      | Some v -> float_of_json v
+      | Some v -> Common.float_of_json v
       | None -> 0.0
     in
     let market_prices = match List.assoc_opt "market_prices" fields with
-      | Some (`List ps) -> List.map float_of_json ps
+      | Some (`List ps) -> List.map Common.float_of_json ps
       | _ -> []
     in
     if price <= 0.0 || market_prices = [] then
@@ -36,18 +31,13 @@ let deal_score json =
     else
       let sorted = List.sort Float.compare market_prices in
       let n = List.length sorted in
-      let mean =
-        List.fold_left ( +. ) 0.0 sorted /. Float.of_int n
-      in
-      (* How many market prices are above this price? *)
+      let mean = Common.mean sorted in
       let cheaper_count =
         List.length (List.filter (fun p -> p >= price) sorted)
       in
       let percentile_rank =
         Float.of_int cheaper_count /. Float.of_int n *. 100.0
       in
-      (* Blend: percentile rank (how you compare to market)
-         weighted with distance from mean *)
       let distance_factor =
         if Float.abs mean < 1.0 then 0.0
         else if price < mean then

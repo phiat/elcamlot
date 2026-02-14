@@ -1,46 +1,19 @@
 (** Outlier detection — IQR fencing and modified Z-score (MAD) *)
 
-let float_of_json = function
-  | `Int n -> Float.of_int n
-  | `Float f -> f
-  | _ -> 0.0
-
-let extract_prices json =
-  match json with
-  | `Assoc fields ->
-    (match List.assoc_opt "prices" fields with
-     | Some (`List prices) -> List.map float_of_json prices
-     | _ -> [])
-  | _ -> []
-
-let mean prices =
-  let sum = List.fold_left ( +. ) 0.0 prices in
-  sum /. Float.of_int (List.length prices)
-
-let median_of sorted =
-  let n = List.length sorted in
-  if n = 0 then 0.0
-  else if n mod 2 = 1 then List.nth sorted (n / 2)
-  else
-    let a = List.nth sorted (n / 2 - 1) in
-    let b = List.nth sorted (n / 2) in
-    (a +. b) /. 2.0
-
 (** Median Absolute Deviation *)
 let mad prices =
   let sorted = List.sort Float.compare prices in
-  let med = median_of sorted in
+  let med = Common.median sorted in
   let deviations = List.map (fun p -> Float.abs (p -. med)) prices in
   let sorted_devs = List.sort Float.compare deviations in
-  median_of sorted_devs
+  Common.median sorted_devs
 
 (** Modified Z-score using MAD (more robust than mean-based Z-score) *)
 let modified_z_scores prices =
   let sorted = List.sort Float.compare prices in
-  let med = median_of sorted in
+  let med = Common.median sorted in
   let m = mad prices in
   if m < 0.001 then
-    (* All values nearly identical, no outliers *)
     List.map (fun _ -> 0.0) prices
   else
     List.map (fun p -> 0.6745 *. (p -. med) /. m) prices
@@ -66,7 +39,7 @@ let severity_label z =
   else "mild"
 
 let analyze json =
-  let prices = extract_prices json in
+  let prices = Common.extract_prices json in
   match prices with
   | [] | [_] | [_; _] ->
     `Assoc [("error", `String "Need at least 3 prices for outlier detection")]
@@ -82,7 +55,7 @@ let analyze json =
           Some (`Assoc [
             ("index", `Int idx);
             ("price", `Float price);
-            ("z_score", `Float (Float.round (z *. 100.0) /. 100.0));
+            ("z_score", `Float (Common.round2 z));
             ("severity", `String (severity_label z));
             ("method", `String (
               if iqr_outlier && z_outlier then "both"
@@ -107,9 +80,9 @@ let analyze json =
       ("flagged", `List flagged);
       ("clean_prices", `List (List.map (fun p -> `Float p) clean_prices));
       ("thresholds", `Assoc [
-        ("iqr_lower", `Float (Float.round (lower *. 100.0) /. 100.0));
-        ("iqr_upper", `Float (Float.round (upper *. 100.0) /. 100.0));
+        ("iqr_lower", `Float (Common.round2 lower));
+        ("iqr_upper", `Float (Common.round2 upper));
         ("z_score_threshold", `Float threshold);
       ]);
-      ("mad", `Float (Float.round (mad prices *. 100.0) /. 100.0));
+      ("mad", `Float (Common.round2 (mad prices)));
     ]

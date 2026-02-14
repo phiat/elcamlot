@@ -11,7 +11,7 @@ config :bcrypt_elixir, :log_rounds, 1
 config :carscope, Carscope.Repo,
   username: "carscope",
   password: "carscope",
-  hostname: System.get_env("CARSCOPE_PG_HOST") || "10.153.181.96",
+  hostname: System.get_env("CARSCOPE_PG_HOST") || "localhost",
   database: "carscope_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2

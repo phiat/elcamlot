@@ -1,6 +1,7 @@
 defmodule CarscopeWeb.DashboardLive do
   use CarscopeWeb, :live_view
 
+  require Logger
   alias Carscope.{Vehicles, Analytics, MarketAnalytics}
 
   @impl true
@@ -81,13 +82,17 @@ defmodule CarscopeWeb.DashboardLive do
       {:error, _} -> nil
     end
   rescue
-    _ -> nil
+    e in [Req.TransportError, Req.HTTPError] ->
+      Logger.debug("Analytics unavailable: #{Exception.message(e)}")
+      nil
   end
 
   defp fetch_market_position(vehicle_id) do
     MarketAnalytics.vehicle_market_position(vehicle_id)
   rescue
-    _ -> nil
+    e in [Postgrex.Error, DBConnection.ConnectionError] ->
+      Logger.debug("Market query failed: #{Exception.message(e)}")
+      nil
   end
 
   defp fetch_deal_scores(snapshots, _vehicle_id) when length(snapshots) < 3, do: %{}
@@ -104,7 +109,9 @@ defmodule CarscopeWeb.DashboardLive do
       end
     end)
   rescue
-    _ -> %{}
+    e in [Req.TransportError, Req.HTTPError] ->
+      Logger.debug("Deal scoring unavailable: #{Exception.message(e)}")
+      %{}
   end
 
   defp fetch_depreciation(snapshots) when length(snapshots) < 2, do: nil
@@ -115,35 +122,11 @@ defmodule CarscopeWeb.DashboardLive do
       {:error, _} -> nil
     end
   rescue
-    _ -> nil
+    e in [Req.TransportError, Req.HTTPError] ->
+      Logger.debug("Depreciation service unavailable: #{Exception.message(e)}")
+      nil
   end
 
-  defp format_number(str) do
-    str
-    |> String.graphemes()
-    |> Enum.reverse()
-    |> Enum.chunk_every(3)
-    |> Enum.join(",")
-    |> String.reverse()
-  end
-
-  defp format_price(nil), do: "—"
-  defp format_price(%Decimal{} = cents), do: format_price(Decimal.to_float(cents))
-  defp format_price(cents) when is_number(cents) do
-    dollars = trunc(cents / 100)
-    "$#{dollars |> Integer.to_string() |> format_number()}"
-  end
-
-  defp format_date(nil), do: ""
-  defp format_date(%DateTime{} = dt), do: Calendar.strftime(dt, "%b %d, %Y %H:%M")
-  defp format_date(%NaiveDateTime{} = dt), do: Calendar.strftime(dt, "%b %d, %Y %H:%M")
-
-  defp deal_badge_class("great deal"), do: "bg-success/20 text-success"
-  defp deal_badge_class("good deal"), do: "bg-success/10 text-success"
-  defp deal_badge_class("fair price"), do: "bg-info/10 text-info"
-  defp deal_badge_class("above market"), do: "bg-warning/10 text-warning"
-  defp deal_badge_class("overpriced"), do: "bg-error/10 text-error"
-  defp deal_badge_class(_), do: "bg-base-200 text-base-content/60"
 
   @impl true
   def render(assigns) do

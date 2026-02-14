@@ -91,6 +91,9 @@ defmodule CarscopeWeb do
       alias Phoenix.LiveView.JS
       alias CarscopeWeb.Layouts
 
+      # Shared formatting helpers
+      import CarscopeWeb.Helpers.FormatHelpers
+
       # Routes generation with the ~p sigil
       unquote(verified_routes())
     end

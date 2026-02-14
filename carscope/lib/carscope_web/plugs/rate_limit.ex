@@ -5,9 +5,9 @@ defmodule CarscopeWeb.Plugs.RateLimit do
   """
   import Plug.Conn
 
-  @anonymous_limit 60
-  @authenticated_limit 300
-  @window_ms 60_000
+  @anonymous_limit Application.compile_env(:carscope, :rate_limit_anonymous, 60)
+  @authenticated_limit Application.compile_env(:carscope, :rate_limit_authenticated, 300)
+  @window_ms Application.compile_env(:carscope, :rate_limit_window_ms, 60_000)
 
   def init(opts), do: opts
 

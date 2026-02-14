@@ -98,33 +98,6 @@ defmodule CarscopeWeb.SearchLive do
     end
   end
 
-  defp format_relative_time(nil), do: "—"
-  defp format_relative_time(dt) do
-    diff = DateTime.diff(DateTime.utc_now(), dt, :second)
-    cond do
-      diff < 60 -> "just now"
-      diff < 3600 -> "#{div(diff, 60)}m ago"
-      diff < 86400 -> "#{div(diff, 3600)}h ago"
-      diff < 604_800 -> "#{div(diff, 86400)}d ago"
-      true -> Calendar.strftime(dt, "%b %d")
-    end
-  end
-
-  defp format_price(nil), do: "—"
-  defp format_price(%Decimal{} = cents), do: format_price(Decimal.to_float(cents))
-  defp format_price(cents) when is_number(cents) do
-    dollars = trunc(cents / 100)
-    "$#{dollars |> Integer.to_string() |> format_number()}"
-  end
-
-  defp format_number(str) do
-    str
-    |> String.graphemes()
-    |> Enum.reverse()
-    |> Enum.chunk_every(3)
-    |> Enum.join(",")
-    |> String.reverse()
-  end
 
   defp parse_vehicle_from_query(query) do
     case Regex.run(~r/(\d{4})\s+(\w+)\s+(\w+)/i, query) do

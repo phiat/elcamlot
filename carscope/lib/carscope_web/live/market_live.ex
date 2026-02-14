@@ -1,6 +1,7 @@
 defmodule CarscopeWeb.MarketLive do
   use CarscopeWeb, :live_view
 
+  require Logger
   alias Carscope.MarketAnalytics
 
   @impl true
@@ -42,24 +43,11 @@ defmodule CarscopeWeb.MarketLive do
   defp safe_query(fun, default) do
     fun.()
   rescue
-    _ -> default
+    e in [Postgrex.Error, DBConnection.ConnectionError] ->
+      Logger.debug("Market query failed: #{Exception.message(e)}")
+      default
   end
 
-  defp format_price(nil), do: "—"
-
-  defp format_price(cents) when is_number(cents) do
-    dollars = trunc(cents / 100)
-    "$#{dollars |> Integer.to_string() |> format_number()}"
-  end
-
-  defp format_number(str) do
-    str
-    |> String.graphemes()
-    |> Enum.reverse()
-    |> Enum.chunk_every(3)
-    |> Enum.join(",")
-    |> String.reverse()
-  end
 
   @impl true
   def render(assigns) do

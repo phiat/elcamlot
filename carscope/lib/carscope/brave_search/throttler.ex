@@ -6,9 +6,9 @@ defmodule Carscope.BraveSearch.Throttler do
   use GenServer
   require Logger
 
-  @monthly_limit 2000
-  @search_rate_limit 10
-  @search_window_ms 60_000
+  @monthly_limit Application.compile_env(:carscope, :brave_monthly_limit, 2000)
+  @search_rate_limit Application.compile_env(:carscope, :brave_rate_limit, 10)
+  @search_window_ms Application.compile_env(:carscope, :brave_rate_window_ms, 60_000)
 
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)

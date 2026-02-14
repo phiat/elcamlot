@@ -5,7 +5,7 @@ import Config
 config :carscope, Carscope.Repo,
   username: "carscope",
   password: "carscope",
-  hostname: System.get_env("CARSCOPE_PG_HOST") || "10.153.181.96",
+  hostname: System.get_env("CARSCOPE_PG_HOST") || "localhost",
   database: "carscope",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,

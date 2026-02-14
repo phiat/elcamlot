@@ -23,6 +23,15 @@ defmodule CarscopeWeb.Router do
   #   pipe_through :api
   # end
 
+  # Enable Swoosh mailbox preview in dev
+  if Application.compile_env(:carscope, :dev_routes) do
+    scope "/dev" do
+      pipe_through :browser
+
+      forward "/mailbox", Plug.Swoosh.MailboxPreview
+    end
+  end
+
   ## Authentication routes
 
   scope "/", CarscopeWeb do

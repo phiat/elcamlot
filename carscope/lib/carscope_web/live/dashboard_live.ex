@@ -128,6 +128,7 @@ defmodule CarscopeWeb.DashboardLive do
   end
 
   defp format_price(nil), do: "—"
+  defp format_price(%Decimal{} = cents), do: format_price(Decimal.to_float(cents))
   defp format_price(cents) when is_number(cents) do
     dollars = trunc(cents / 100)
     "$#{dollars |> Integer.to_string() |> format_number()}"

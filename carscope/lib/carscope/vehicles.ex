@@ -9,7 +9,18 @@ defmodule Carscope.Vehicles do
   # --- Vehicles ---
 
   def list_vehicles do
-    Repo.all(from v in Vehicle, order_by: [asc: v.make, asc: v.model, desc: v.year])
+    from(v in Vehicle,
+      left_join: p in PriceSnapshot, on: p.vehicle_id == v.id,
+      group_by: v.id,
+      order_by: [asc: v.make, asc: v.model, desc: v.year],
+      select: %{v | trim: v.trim},
+      select_merge: %{
+        avg_price: type(fragment("ROUND(AVG(?))::bigint", p.price_cents), :integer),
+        snapshot_count: count(p.vehicle_id),
+        latest_snapshot_at: max(p.time)
+      }
+    )
+    |> Repo.all()
   end
 
   def get_vehicle!(id), do: Repo.get!(Vehicle, id)
@@ -40,9 +51,17 @@ defmodule Carscope.Vehicles do
     like = "%#{term}%"
 
     from(v in Vehicle,
+      left_join: p in PriceSnapshot, on: p.vehicle_id == v.id,
       where: ilike(v.make, ^like) or ilike(v.model, ^like),
+      group_by: v.id,
       order_by: [desc: v.year],
-      limit: 50
+      limit: 50,
+      select: %{v | trim: v.trim},
+      select_merge: %{
+        avg_price: type(fragment("ROUND(AVG(?))::bigint", p.price_cents), :integer),
+        snapshot_count: count(p.vehicle_id),
+        latest_snapshot_at: max(p.time)
+      }
     )
     |> Repo.all()
   end

@@ -9,6 +9,10 @@ defmodule Carscope.Vehicles.Vehicle do
     field :trim, :string
     field :body_style, :string
 
+    field :avg_price, :integer, virtual: true
+    field :snapshot_count, :integer, virtual: true, default: 0
+    field :latest_snapshot_at, :utc_datetime, virtual: true
+
     has_many :price_snapshots, Carscope.Vehicles.PriceSnapshot
 
     timestamps(type: :utc_datetime, updated_at: false, inserted_at: :created_at)

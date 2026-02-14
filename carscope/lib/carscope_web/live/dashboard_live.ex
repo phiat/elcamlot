@@ -11,10 +11,14 @@ defmodule CarscopeWeb.DashboardLive do
     stats = Vehicles.price_stats(vehicle.id)
 
     # Try analytics service (non-blocking)
-    analysis = fetch_analysis(snapshots)
+    prices = Enum.map(snapshots, & &1.price_cents)
+    analysis = fetch_analysis(prices)
     depreciation = fetch_depreciation(snapshots)
     market_position = fetch_market_position(vehicle.id)
     deal_scores = fetch_deal_scores(snapshots, vehicle.id)
+    data_quality = fetch_data_quality(prices)
+    outliers = fetch_outliers(prices)
+    dom_stats = Vehicles.days_on_market_stats(vehicle.id)
 
     {:ok,
      socket
@@ -25,6 +29,9 @@ defmodule CarscopeWeb.DashboardLive do
      |> assign(:depreciation, depreciation)
      |> assign(:market_position, market_position)
      |> assign(:deal_scores, deal_scores)
+     |> assign(:data_quality, data_quality)
+     |> assign(:outliers, outliers)
+     |> assign(:dom_stats, dom_stats)
      |> assign(:searching, false)}
   end
 
@@ -57,13 +64,20 @@ defmodule CarscopeWeb.DashboardLive do
 
         snapshots = Vehicles.list_price_snapshots(vehicle.id)
         stats = Vehicles.price_stats(vehicle.id)
-        analysis = fetch_analysis(snapshots)
+        prices = Enum.map(snapshots, & &1.price_cents)
+        analysis = fetch_analysis(prices)
         depreciation = fetch_depreciation(snapshots)
         deal_scores = fetch_deal_scores(snapshots, vehicle.id)
+        data_quality = fetch_data_quality(prices)
+        outliers = fetch_outliers(prices)
+        dom_stats = Vehicles.days_on_market_stats(vehicle.id)
 
         {:noreply,
          socket
-         |> assign(snapshots: snapshots, stats: stats, analysis: analysis, depreciation: depreciation, deal_scores: deal_scores, searching: false)
+         |> assign(snapshots: snapshots, stats: stats, analysis: analysis,
+                   depreciation: depreciation, deal_scores: deal_scores,
+                   data_quality: data_quality, outliers: outliers,
+                   dom_stats: dom_stats, searching: false)
          |> put_flash(:info, "Added #{length(results)} price points")}
 
       {:error, reason} ->
@@ -74,9 +88,7 @@ defmodule CarscopeWeb.DashboardLive do
     end
   end
 
-  defp fetch_analysis(snapshots) do
-    prices = Enum.map(snapshots, & &1.price_cents)
-
+  defp fetch_analysis(prices) do
     case Analytics.analyze_prices(prices) do
       {:ok, data} -> data
       {:error, _} -> nil
@@ -127,6 +139,43 @@ defmodule CarscopeWeb.DashboardLive do
       nil
   end
 
+
+  defp fetch_data_quality(prices) when length(prices) < 3, do: nil
+
+  defp fetch_data_quality(prices) do
+    case Analytics.data_quality(prices) do
+      {:ok, data} -> data
+      {:error, _} -> nil
+    end
+  rescue
+    e in [Req.TransportError, Req.HTTPError] ->
+      Logger.debug("Data quality unavailable: #{Exception.message(e)}")
+      nil
+  end
+
+  defp fetch_outliers(prices) when length(prices) < 3, do: nil
+
+  defp fetch_outliers(prices) do
+    case Analytics.outliers(prices) do
+      {:ok, data} -> data
+      {:error, _} -> nil
+    end
+  rescue
+    e in [Req.TransportError, Req.HTTPError] ->
+      Logger.debug("Outlier detection unavailable: #{Exception.message(e)}")
+      nil
+  end
+
+  defp freshness_class(days) when is_integer(days) do
+    cond do
+      days >= 60 -> {"Stale", "bg-error/10 text-error"}
+      days >= 30 -> {"Negotiable", "bg-warning/10 text-warning"}
+      days >= 14 -> {"Sitting", "bg-info/10 text-info"}
+      true -> {"Fresh", "bg-success/10 text-success"}
+    end
+  end
+
+  defp freshness_class(_), do: {"—", ""}
 
   @impl true
   def render(assigns) do
@@ -268,6 +317,98 @@ defmodule CarscopeWeb.DashboardLive do
               </div>
             <% end %>
           </div>
+        </div>
+      </div>
+
+      <%!-- Data Quality + Outliers row --%>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div :if={@data_quality} class="bg-base-100 rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold mb-3">
+            Data Quality
+            <span class={[
+              "ml-2 text-2xl font-bold",
+              if(@data_quality["grade"] in ~w(A B), do: "text-success",
+                else: if(@data_quality["grade"] == "C", do: "text-warning", else: "text-error"))
+            ]}>
+              {@data_quality["grade"]}
+            </span>
+            <span class="text-xs text-base-content/40 font-normal ml-1">
+              ({@data_quality["composite_score"]}/100)
+            </span>
+          </h2>
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <span class="text-base-content/60">Sample Size</span>
+              <div class="font-mono">{@data_quality["sample_size"]} pts ({@data_quality["dimensions"]["sample_size_score"] |> trunc()}%)</div>
+            </div>
+            <div>
+              <span class="text-base-content/60">Spread (CV)</span>
+              <div class="font-mono">{@data_quality["details"]["cv"]} ({@data_quality["dimensions"]["spread_score"] |> trunc()}%)</div>
+            </div>
+            <div>
+              <span class="text-base-content/60">Skewness</span>
+              <div class="font-mono">{@data_quality["details"]["skewness"]}</div>
+            </div>
+            <div>
+              <span class="text-base-content/60">Kurtosis</span>
+              <div class="font-mono">{@data_quality["details"]["kurtosis"]}</div>
+            </div>
+          </div>
+        </div>
+
+        <div :if={@outliers} class="bg-base-100 rounded-lg shadow p-6">
+          <h2 class="text-lg font-semibold mb-3">
+            Outlier Detection
+            <span class="text-xs text-base-content/40 font-normal ml-1">
+              ({@outliers["outlier_count"]} of {@outliers["total_count"]} flagged)
+            </span>
+          </h2>
+          <%= if @outliers["outlier_count"] > 0 do %>
+            <div class="space-y-2">
+              <%= for flag <- @outliers["flagged"] do %>
+                <div class="flex items-center gap-3 text-sm">
+                  <span class={[
+                    "px-2 py-0.5 rounded-full text-xs font-medium",
+                    if(flag["severity"] == "extreme", do: "bg-error/20 text-error",
+                      else: if(flag["severity"] == "high", do: "bg-warning/20 text-warning",
+                        else: "bg-info/10 text-info"))
+                  ]}>
+                    {flag["severity"]}
+                  </span>
+                  <span class="font-mono">{format_price(flag["price"])}</span>
+                  <span class="text-base-content/40">z={flag["z_score"]} ({flag["method"]})</span>
+                </div>
+              <% end %>
+            </div>
+          <% else %>
+            <p class="text-sm text-success">No outliers detected — data looks clean.</p>
+          <% end %>
+          <div class="mt-3 text-xs text-base-content/40">
+            IQR bounds: {format_price(@outliers["thresholds"]["iqr_lower"])} – {format_price(@outliers["thresholds"]["iqr_upper"])}
+          </div>
+        </div>
+      </div>
+
+      <%!-- Days on Market --%>
+      <div :if={@dom_stats != []} class="bg-base-100 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-lg font-semibold mb-4">Listing Freshness</h2>
+        <div class="space-y-2">
+          <%= for listing <- Enum.take(@dom_stats, 15) do %>
+            <% {label, badge_class} = freshness_class(listing["days_on_market"]) %>
+            <div class="flex items-center gap-3 text-sm">
+              <span class={"inline-block w-20 text-center px-2 py-0.5 rounded-full text-xs font-medium #{badge_class}"}>
+                {label}
+              </span>
+              <span class="font-mono w-16 text-right">{listing["days_on_market"]}d</span>
+              <span class="font-mono font-bold">{format_price(listing["min_price"])}</span>
+              <%= if listing["times_seen"] > 1 do %>
+                <span class="text-base-content/40">seen {listing["times_seen"]}x</span>
+              <% end %>
+              <a :if={listing["url"]} href={listing["url"]} target="_blank" class="text-primary hover:underline ml-auto truncate max-w-xs">
+                {URI.parse(listing["url"]).host |> String.replace(~r/^www\./, "")}
+              </a>
+            </div>
+          <% end %>
         </div>
       </div>
 

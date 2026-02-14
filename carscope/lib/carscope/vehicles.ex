@@ -142,6 +142,57 @@ defmodule Carscope.Vehicles do
     Ecto.Adapters.SQL.query!(Repo, query, [time_bucket, vehicle_id])
   end
 
+  @doc "List snapshots with days-on-market computed from first time each URL was seen."
+  def list_snapshots_with_freshness(vehicle_id) do
+    query = """
+    SELECT
+      ps.*,
+      ps.time - first_seen.first_seen_at AS days_on_market_interval,
+      EXTRACT(DAY FROM (NOW() - first_seen.first_seen_at))::integer AS days_on_market
+    FROM price_snapshots ps
+    JOIN (
+      SELECT url, MIN(time) AS first_seen_at
+      FROM price_snapshots
+      WHERE vehicle_id = $1 AND url IS NOT NULL
+      GROUP BY url
+    ) first_seen ON ps.url = first_seen.url
+    WHERE ps.vehicle_id = $1
+    ORDER BY ps.time DESC
+    """
+
+    case Ecto.Adapters.SQL.query(Repo, query, [vehicle_id]) do
+      {:ok, %{rows: rows, columns: columns}} ->
+        Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
+  @doc "Get days-on-market distribution for a vehicle's listings."
+  def days_on_market_stats(vehicle_id) do
+    query = """
+    SELECT
+      EXTRACT(DAY FROM (NOW() - MIN(time)))::integer AS days_on_market,
+      url,
+      MIN(price_cents) AS min_price,
+      MAX(price_cents) AS max_price,
+      COUNT(*) AS times_seen
+    FROM price_snapshots
+    WHERE vehicle_id = $1 AND url IS NOT NULL
+    GROUP BY url
+    ORDER BY days_on_market DESC
+    """
+
+    case Ecto.Adapters.SQL.query(Repo, query, [vehicle_id]) do
+      {:ok, %{rows: rows, columns: columns}} ->
+        Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
+
+      {:error, _} ->
+        []
+    end
+  end
+
   # --- Search Queries ---
 
   def log_search(query, result_count) do

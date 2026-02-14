@@ -51,6 +51,33 @@ defmodule Carscope.Analytics do
     end
   end
 
+  @doc "Detect outliers using IQR fencing and modified Z-scores."
+  def outliers(prices_cents) when is_list(prices_cents) do
+    case post("/outliers", %{prices: prices_cents}) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc "Generate histogram / binned distribution of prices."
+  def histogram(prices_cents, opts \\ []) do
+    payload = %{prices: prices_cents}
+    payload = if bins = Keyword.get(opts, :bins), do: Map.put(payload, :bins, bins), else: payload
+
+    case post("/histogram", payload) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc "Assess data quality of a price dataset (grade A-F)."
+  def data_quality(prices_cents) when is_list(prices_cents) do
+    case post("/data-quality", %{prices: prices_cents}) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   @doc "Health check for the analytics service."
   def healthy? do
     case Req.get(client(), url: "/health") do

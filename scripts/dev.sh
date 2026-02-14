@@ -4,6 +4,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "${SCRIPT_DIR}")"
 
+# Load .env file
+if [ -f "${PROJECT_ROOT}/.env" ]; then
+  set -a
+  source "${PROJECT_ROOT}/.env"
+  set +a
+  echo "==> Loaded .env"
+fi
+
 echo "==> Starting CarScope dev environment..."
 
 # Ensure containers are up
@@ -26,6 +34,7 @@ echo ""
 echo "==> Starting Phoenix..."
 cd "${PROJECT_ROOT}/carscope"
 
+export CARSCOPE_PG_HOST="${PG_IP}"
 export DATABASE_URL="postgres://carscope:carscope@${PG_IP}:5432/carscope"
 export ANALYTICS_URL="http://${OCAML_IP}:8080"
 

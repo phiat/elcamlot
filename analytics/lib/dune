@@ -1,0 +1,4 @@
+(library
+ (name carscope_analytics)
+ (wrapped false)
+ (libraries yojson))

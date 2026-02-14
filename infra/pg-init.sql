@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
   model VARCHAR NOT NULL,
   year INTEGER NOT NULL,
   trim VARCHAR,
+  body_style VARCHAR,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(make, model, year, trim)
 );
@@ -20,7 +21,9 @@ CREATE TABLE IF NOT EXISTS price_snapshots (
   mileage INTEGER,
   source VARCHAR,
   location VARCHAR,
-  url TEXT
+  url TEXT,
+  condition VARCHAR,
+  listed_at TIMESTAMPTZ
 );
 
 SELECT create_hypertable('price_snapshots', 'time', if_not_exists => TRUE);
@@ -36,5 +39,8 @@ CREATE TABLE IF NOT EXISTS search_queries (
 -- Indexes for common queries
 CREATE INDEX IF NOT EXISTS idx_vehicles_make_model ON vehicles(make, model);
 CREATE INDEX IF NOT EXISTS idx_vehicles_year ON vehicles(year);
+CREATE INDEX IF NOT EXISTS idx_vehicles_body_style ON vehicles(body_style);
 CREATE INDEX IF NOT EXISTS idx_price_snapshots_vehicle_id ON price_snapshots(vehicle_id);
 CREATE INDEX IF NOT EXISTS idx_price_snapshots_source ON price_snapshots(source);
+CREATE INDEX IF NOT EXISTS idx_price_snapshots_condition ON price_snapshots(condition);
+CREATE INDEX IF NOT EXISTS idx_price_snapshots_listed_at ON price_snapshots(listed_at);

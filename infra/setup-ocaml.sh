@@ -32,6 +32,11 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
+echo "==> Creating analytics user..."
+incus exec "${CONTAINER_NAME}" -- bash -c '
+  useradd -m -s /bin/bash analytics 2>/dev/null || true
+'
+
 echo "==> Installing OCaml toolchain..."
 incus exec "${CONTAINER_NAME}" -- bash -c '
   export DEBIAN_FRONTEND=noninteractive
@@ -40,25 +45,27 @@ incus exec "${CONTAINER_NAME}" -- bash -c '
   apt-get install -y -qq build-essential curl git pkg-config \
     libev-dev libssl-dev libffi-dev zlib1g-dev \
     opam >/dev/null 2>&1
+'
 
-  # Initialize opam for root user (non-interactive)
+# Run opam as the analytics user (avoids root warnings)
+incus exec "${CONTAINER_NAME}" -- su - analytics -c '
   opam init --bare --disable-sandboxing --yes
 
-  # Create a switch with OCaml 5.2
   opam switch create carscope 5.2.1 --yes
 
-  # Install Dream web framework and dependencies
   eval $(opam env --switch=carscope)
-  opam install dream yojson ppx_deriving_yojson core_unix --yes
+  opam install dream yojson ppx_deriving_yojson lwt_ppx core_unix --yes
 '
 
 # Push analytics source code if it exists
 if [ -d "${PROJECT_ROOT}/analytics" ]; then
   echo "==> Pushing analytics source to container..."
-  incus file push -r "${PROJECT_ROOT}/analytics/" "${CONTAINER_NAME}/opt/analytics/"
-  incus exec "${CONTAINER_NAME}" -- bash -c '
+  incus exec "${CONTAINER_NAME}" -- mkdir -p /home/analytics/app
+  incus file push -r "${PROJECT_ROOT}/analytics/" "${CONTAINER_NAME}/home/analytics/app/"
+  incus exec "${CONTAINER_NAME}" -- chown -R analytics:analytics /home/analytics/app
+  incus exec "${CONTAINER_NAME}" -- su - analytics -c '
     eval $(opam env --switch=carscope)
-    cd /opt/analytics && dune build 2>/dev/null || echo "Will build after source is ready"
+    cd ~/app && dune build 2>/dev/null || echo "Will build after source is ready"
   '
 fi
 
@@ -70,4 +77,4 @@ echo "    IP:        ${OCAML_IP}"
 echo "    Analytics service will listen on port 8080"
 echo ""
 echo "    To build & run the service:"
-echo "    incus exec ${CONTAINER_NAME} -- bash -c 'eval \$(opam env --switch=carscope) && cd /opt/analytics && dune exec bin/server.exe'"
+echo "    incus exec ${CONTAINER_NAME} -- su - analytics -c 'eval \$(opam env --switch=carscope) && cd ~/app && dune exec bin/server.exe'"

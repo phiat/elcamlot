@@ -112,17 +112,32 @@ defmodule Carscope.Vehicles do
   end
 
   def price_stats(vehicle_id) do
-    from(p in PriceSnapshot,
-      where: p.vehicle_id == ^vehicle_id,
-      select: %{
-        count: count(p.price_cents),
-        avg_price: avg(p.price_cents),
-        min_price: min(p.price_cents),
-        max_price: max(p.price_cents),
-        latest: max(p.time)
-      }
-    )
-    |> Repo.one()
+    query = """
+    SELECT
+      COUNT(price_cents) AS count,
+      ROUND(AVG(price_cents))::bigint AS avg_price,
+      MIN(price_cents) AS min_price,
+      MAX(price_cents) AS max_price,
+      MAX(time) AS latest,
+      ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_cents))::bigint AS median,
+      ROUND(STDDEV(price_cents))::bigint AS std_dev,
+      ROUND(PERCENTILE_CONT(0.1) WITHIN GROUP (ORDER BY price_cents))::bigint AS p10,
+      ROUND(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY price_cents))::bigint AS p25,
+      ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY price_cents))::bigint AS p75,
+      ROUND(PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY price_cents))::bigint AS p90,
+      ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY price_cents)
+        - PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY price_cents))::bigint AS iqr
+    FROM price_snapshots
+    WHERE vehicle_id = $1
+    """
+
+    case Ecto.Adapters.SQL.query(Repo, query, [vehicle_id]) do
+      {:ok, %{columns: columns, rows: [row]}} ->
+        Enum.zip(columns, row) |> Map.new()
+
+      _ ->
+        %{"count" => 0, "avg_price" => nil, "min_price" => nil, "max_price" => nil}
+    end
   end
 
   def price_trends(vehicle_id, time_bucket \\ "1 day") do
@@ -140,33 +155,6 @@ defmodule Carscope.Vehicles do
     """
 
     Ecto.Adapters.SQL.query!(Repo, query, [time_bucket, vehicle_id])
-  end
-
-  @doc "List snapshots with days-on-market computed from first time each URL was seen."
-  def list_snapshots_with_freshness(vehicle_id) do
-    query = """
-    SELECT
-      ps.*,
-      ps.time - first_seen.first_seen_at AS days_on_market_interval,
-      EXTRACT(DAY FROM (NOW() - first_seen.first_seen_at))::integer AS days_on_market
-    FROM price_snapshots ps
-    JOIN (
-      SELECT url, MIN(time) AS first_seen_at
-      FROM price_snapshots
-      WHERE vehicle_id = $1 AND url IS NOT NULL
-      GROUP BY url
-    ) first_seen ON ps.url = first_seen.url
-    WHERE ps.vehicle_id = $1
-    ORDER BY ps.time DESC
-    """
-
-    case Ecto.Adapters.SQL.query(Repo, query, [vehicle_id]) do
-      {:ok, %{rows: rows, columns: columns}} ->
-        Enum.map(rows, fn row -> Enum.zip(columns, row) |> Map.new() end)
-
-      {:error, _} ->
-        []
-    end
   end
 
   @doc "Get days-on-market distribution for a vehicle's listings."

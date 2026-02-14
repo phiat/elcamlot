@@ -1,9 +1,10 @@
 defmodule Carscope.MarketAnalytics do
   @moduledoc """
-  Market-level analytics using pg_duckdb for high-performance aggregations.
+  Market-level analytics using Postgres aggregation queries.
 
-  Uses pg_duckdb's columnar engine for analytical queries across many vehicles
-  and price snapshots. Falls back to regular Postgres if pg_duckdb is unavailable.
+  Cross-vehicle market overviews, price trends, geographic pricing, and
+  activity metrics. Uses TimescaleDB time_bucket for time-series bucketing
+  and PERCENTILE_CONT for distribution stats.
   """
   alias Carscope.Repo
 

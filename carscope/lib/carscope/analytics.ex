@@ -8,19 +8,6 @@ defmodule Carscope.Analytics do
   require Logger
 
   @doc """
-  Analyze price data for a vehicle. Sends prices to OCaml service
-  and returns statistics + deal score.
-  """
-  def analyze_prices(prices_cents) when is_list(prices_cents) do
-    payload = %{prices: prices_cents}
-
-    case post("/analyze", payload) do
-      {:ok, result} -> {:ok, result}
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  @doc """
   Get a deal score for a specific price given market data.
   Returns a score from 0-100 (100 = best deal).
   """

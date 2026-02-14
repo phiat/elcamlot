@@ -10,9 +10,7 @@ defmodule CarscopeWeb.DashboardLive do
     snapshots = Vehicles.list_price_snapshots(vehicle.id)
     stats = Vehicles.price_stats(vehicle.id)
 
-    # Try analytics service (non-blocking)
     prices = Enum.map(snapshots, & &1.price_cents)
-    analysis = fetch_analysis(prices)
     depreciation = fetch_depreciation(snapshots)
     market_position = fetch_market_position(vehicle.id)
     deal_scores = fetch_deal_scores(snapshots, vehicle.id)
@@ -25,7 +23,6 @@ defmodule CarscopeWeb.DashboardLive do
      |> assign(:vehicle, vehicle)
      |> assign(:snapshots, snapshots)
      |> assign(:stats, stats)
-     |> assign(:analysis, analysis)
      |> assign(:depreciation, depreciation)
      |> assign(:market_position, market_position)
      |> assign(:deal_scores, deal_scores)
@@ -65,7 +62,6 @@ defmodule CarscopeWeb.DashboardLive do
         snapshots = Vehicles.list_price_snapshots(vehicle.id)
         stats = Vehicles.price_stats(vehicle.id)
         prices = Enum.map(snapshots, & &1.price_cents)
-        analysis = fetch_analysis(prices)
         depreciation = fetch_depreciation(snapshots)
         deal_scores = fetch_deal_scores(snapshots, vehicle.id)
         data_quality = fetch_data_quality(prices)
@@ -74,7 +70,7 @@ defmodule CarscopeWeb.DashboardLive do
 
         {:noreply,
          socket
-         |> assign(snapshots: snapshots, stats: stats, analysis: analysis,
+         |> assign(snapshots: snapshots, stats: stats,
                    depreciation: depreciation, deal_scores: deal_scores,
                    data_quality: data_quality, outliers: outliers,
                    dom_stats: dom_stats, searching: false)
@@ -86,17 +82,6 @@ defmodule CarscopeWeb.DashboardLive do
          |> assign(searching: false)
          |> put_flash(:error, "Search failed: #{inspect(reason)}")}
     end
-  end
-
-  defp fetch_analysis(prices) do
-    case Analytics.analyze_prices(prices) do
-      {:ok, data} -> data
-      {:error, _} -> nil
-    end
-  rescue
-    e in [Req.TransportError, Req.HTTPError] ->
-      Logger.debug("Analytics unavailable: #{Exception.message(e)}")
-      nil
   end
 
   defp fetch_market_position(vehicle_id) do
@@ -194,20 +179,52 @@ defmodule CarscopeWeb.DashboardLive do
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div class="bg-base-100 rounded-lg shadow p-4">
           <div class="text-sm text-base-content/60">Avg Price</div>
-          <div class="text-2xl font-bold">{format_price(@stats.avg_price)}</div>
+          <div class="text-2xl font-bold">{format_price(@stats["avg_price"])}</div>
+        </div>
+        <div class="bg-base-100 rounded-lg shadow p-4">
+          <div class="text-sm text-base-content/60">Median</div>
+          <div class="text-2xl font-bold">{format_price(@stats["median"])}</div>
         </div>
         <div class="bg-base-100 rounded-lg shadow p-4">
           <div class="text-sm text-base-content/60">Min Price</div>
-          <div class="text-2xl font-bold text-success">{format_price(@stats.min_price)}</div>
+          <div class="text-2xl font-bold text-success">{format_price(@stats["min_price"])}</div>
         </div>
         <div class="bg-base-100 rounded-lg shadow p-4">
           <div class="text-sm text-base-content/60">Max Price</div>
-          <div class="text-2xl font-bold text-error">{format_price(@stats.max_price)}</div>
+          <div class="text-2xl font-bold text-error">{format_price(@stats["max_price"])}</div>
         </div>
-        <div class="bg-base-100 rounded-lg shadow p-4">
-          <div class="text-sm text-base-content/60">Data Points</div>
-          <div class="text-2xl font-bold">{@stats.count}</div>
+      </div>
+
+      <%!-- Distribution Stats --%>
+      <div :if={@stats["count"] > 2} class="bg-base-100 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-lg font-semibold mb-4">Price Distribution</h2>
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
+          <div>
+            <span class="text-base-content/60">Std Dev</span>
+            <div class="font-mono">{format_price(@stats["std_dev"])}</div>
+          </div>
+          <div>
+            <span class="text-base-content/60">IQR</span>
+            <div class="font-mono">{format_price(@stats["iqr"])}</div>
+          </div>
+          <div>
+            <span class="text-base-content/60">P10</span>
+            <div class="font-mono">{format_price(@stats["p10"])}</div>
+          </div>
+          <div>
+            <span class="text-base-content/60">P25</span>
+            <div class="font-mono">{format_price(@stats["p25"])}</div>
+          </div>
+          <div>
+            <span class="text-base-content/60">P75</span>
+            <div class="font-mono">{format_price(@stats["p75"])}</div>
+          </div>
+          <div>
+            <span class="text-base-content/60">P90</span>
+            <div class="font-mono">{format_price(@stats["p90"])}</div>
+          </div>
         </div>
+        <div class="mt-2 text-xs text-base-content/40">{@stats["count"]} data points</div>
       </div>
 
       <%!-- Market Comparison (from pg_duckdb) --%>
@@ -247,37 +264,6 @@ defmodule CarscopeWeb.DashboardLive do
           <.link navigate={~p"/market"} class="text-primary hover:underline text-sm">
             View full market analytics &rarr;
           </.link>
-        </div>
-      </div>
-
-      <%!-- Analytics (from OCaml service) --%>
-      <div :if={@analysis} class="bg-base-100 rounded-lg shadow p-6 mb-8">
-        <h2 class="text-lg font-semibold mb-4">Analytics (OxCaml)</h2>
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
-          <div>
-            <span class="text-base-content/60">Median</span>
-            <div class="font-mono">{format_price(@analysis["median"])}</div>
-          </div>
-          <div>
-            <span class="text-base-content/60">Std Dev</span>
-            <div class="font-mono">{format_price(@analysis["std_dev"])}</div>
-          </div>
-          <div>
-            <span class="text-base-content/60">IQR</span>
-            <div class="font-mono">{format_price(@analysis["iqr"])}</div>
-          </div>
-          <div>
-            <span class="text-base-content/60">P10</span>
-            <div class="font-mono">{format_price(@analysis["p10"])}</div>
-          </div>
-          <div>
-            <span class="text-base-content/60">P25</span>
-            <div class="font-mono">{format_price(@analysis["p25"])}</div>
-          </div>
-          <div>
-            <span class="text-base-content/60">P90</span>
-            <div class="font-mono">{format_price(@analysis["p90"])}</div>
-          </div>
         </div>
       </div>
 

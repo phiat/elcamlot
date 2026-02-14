@@ -60,7 +60,15 @@ defmodule Carscope.Vehicles do
   def create_price_snapshot(attrs) do
     %PriceSnapshot{}
     |> PriceSnapshot.changeset(attrs)
-    |> Repo.insert()
+    |> Repo.insert(on_conflict: :nothing)
+  end
+
+  def get_market_prices(vehicle_id) do
+    from(p in PriceSnapshot,
+      where: p.vehicle_id == ^vehicle_id,
+      select: p.price_cents
+    )
+    |> Repo.all()
   end
 
   def price_stats(vehicle_id) do

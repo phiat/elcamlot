@@ -1,5 +1,13 @@
 (** CarScope Analytics Service — Dream HTTP server *)
 
+(** Check if result contains a validation error and return appropriate status *)
+let respond_with_result result =
+  match result with
+  | `Assoc fields when List.mem_assoc "error" fields ->
+    Dream.json ~status:`Unprocessable_Entity (Yojson.Safe.to_string result)
+  | _ ->
+    Dream.json (Yojson.Safe.to_string result)
+
 let () =
   Dream.run ~port:8080 ~interface:"0.0.0.0"
   @@ Dream.logger
@@ -12,8 +20,7 @@ let () =
       let%lwt body = Dream.body request in
       match Yojson.Safe.from_string body with
       | json ->
-        let result = Stats.analyze json in
-        Dream.json (Yojson.Safe.to_string result)
+        respond_with_result (Stats.analyze json)
       | exception Yojson.Json_error msg ->
         Dream.json ~status:`Bad_Request
           (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
@@ -22,8 +29,7 @@ let () =
       let%lwt body = Dream.body request in
       match Yojson.Safe.from_string body with
       | json ->
-        let result = Scoring.deal_score json in
-        Dream.json (Yojson.Safe.to_string result)
+        respond_with_result (Scoring.deal_score json)
       | exception Yojson.Json_error msg ->
         Dream.json ~status:`Bad_Request
           (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
@@ -32,8 +38,7 @@ let () =
       let%lwt body = Dream.body request in
       match Yojson.Safe.from_string body with
       | json ->
-        let result = Depreciation.analyze json in
-        Dream.json (Yojson.Safe.to_string result)
+        respond_with_result (Depreciation.analyze json)
       | exception Yojson.Json_error msg ->
         Dream.json ~status:`Bad_Request
           (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));

@@ -1,4 +1,4 @@
-(** Price statistics — mean, median, std dev, percentiles *)
+(** Price statistics — mean, median, std dev, percentiles, IQR *)
 
 let float_of_json = function
   | `Int n -> Float.of_int n
@@ -50,6 +50,9 @@ let percentile prices pct =
     let idx = Float.to_int (Float.of_int (n - 1) *. pct /. 100.0) in
     List.nth sorted (min idx (n - 1))
 
+let iqr prices =
+  percentile prices 75.0 -. percentile prices 25.0
+
 let analyze json =
   let prices = extract_prices json in
   match prices with
@@ -68,4 +71,5 @@ let analyze json =
       ("p25", `Float (percentile prices 25.0));
       ("p75", `Float (percentile prices 75.0));
       ("p90", `Float (percentile prices 90.0));
+      ("iqr", `Float (iqr prices));
     ]

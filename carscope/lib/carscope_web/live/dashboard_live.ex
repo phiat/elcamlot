@@ -13,6 +13,7 @@ defmodule CarscopeWeb.DashboardLive do
     analysis = fetch_analysis(snapshots)
     depreciation = fetch_depreciation(snapshots)
     market_position = fetch_market_position(vehicle.id)
+    deal_scores = fetch_deal_scores(snapshots, vehicle.id)
 
     {:ok,
      socket
@@ -22,6 +23,7 @@ defmodule CarscopeWeb.DashboardLive do
      |> assign(:analysis, analysis)
      |> assign(:depreciation, depreciation)
      |> assign(:market_position, market_position)
+     |> assign(:deal_scores, deal_scores)
      |> assign(:searching, false)}
   end
 
@@ -56,10 +58,11 @@ defmodule CarscopeWeb.DashboardLive do
         stats = Vehicles.price_stats(vehicle.id)
         analysis = fetch_analysis(snapshots)
         depreciation = fetch_depreciation(snapshots)
+        deal_scores = fetch_deal_scores(snapshots, vehicle.id)
 
         {:noreply,
          socket
-         |> assign(snapshots: snapshots, stats: stats, analysis: analysis, depreciation: depreciation, searching: false)
+         |> assign(snapshots: snapshots, stats: stats, analysis: analysis, depreciation: depreciation, deal_scores: deal_scores, searching: false)
          |> put_flash(:info, "Added #{length(results)} price points")}
 
       {:error, reason} ->
@@ -85,6 +88,23 @@ defmodule CarscopeWeb.DashboardLive do
     MarketAnalytics.vehicle_market_position(vehicle_id)
   rescue
     _ -> nil
+  end
+
+  defp fetch_deal_scores(snapshots, _vehicle_id) when length(snapshots) < 3, do: %{}
+
+  defp fetch_deal_scores(snapshots, vehicle_id) do
+    market_prices = Vehicles.get_market_prices(vehicle_id)
+
+    snapshots
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {snap, idx}, acc ->
+      case Analytics.deal_score(snap.price_cents, market_prices) do
+        {:ok, result} -> Map.put(acc, idx, result)
+        _ -> acc
+      end
+    end)
+  rescue
+    _ -> %{}
   end
 
   defp fetch_depreciation(snapshots) when length(snapshots) < 2, do: nil
@@ -116,6 +136,13 @@ defmodule CarscopeWeb.DashboardLive do
   defp format_date(nil), do: ""
   defp format_date(%DateTime{} = dt), do: Calendar.strftime(dt, "%b %d, %Y %H:%M")
   defp format_date(%NaiveDateTime{} = dt), do: Calendar.strftime(dt, "%b %d, %Y %H:%M")
+
+  defp deal_badge_class("great deal"), do: "bg-green-100 text-green-800"
+  defp deal_badge_class("good deal"), do: "bg-emerald-100 text-emerald-700"
+  defp deal_badge_class("fair price"), do: "bg-blue-100 text-blue-700"
+  defp deal_badge_class("above market"), do: "bg-yellow-100 text-yellow-800"
+  defp deal_badge_class("overpriced"), do: "bg-red-100 text-red-800"
+  defp deal_badge_class(_), do: "bg-zinc-100 text-zinc-600"
 
   @impl true
   def render(assigns) do
@@ -193,7 +220,7 @@ defmodule CarscopeWeb.DashboardLive do
       <%!-- Analytics (from OCaml service) --%>
       <div :if={@analysis} class="bg-white rounded-lg shadow p-6 mb-8">
         <h2 class="text-lg font-semibold mb-4">Analytics (OxCaml)</h2>
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
           <div>
             <span class="text-zinc-500">Median</span>
             <div class="font-mono">{format_price(@analysis["median"])}</div>
@@ -201,6 +228,10 @@ defmodule CarscopeWeb.DashboardLive do
           <div>
             <span class="text-zinc-500">Std Dev</span>
             <div class="font-mono">{format_price(@analysis["std_dev"])}</div>
+          </div>
+          <div>
+            <span class="text-zinc-500">IQR</span>
+            <div class="font-mono">{format_price(@analysis["iqr"])}</div>
           </div>
           <div>
             <span class="text-zinc-500">P10</span>
@@ -219,8 +250,13 @@ defmodule CarscopeWeb.DashboardLive do
 
       <%!-- Depreciation (from OCaml service) --%>
       <div :if={@depreciation} class="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 class="text-lg font-semibold mb-4">Depreciation Curve</h2>
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mb-4">
+        <h2 class="text-lg font-semibold mb-4">
+          Depreciation Curve
+          <span :if={@depreciation["model"]} class="text-xs font-normal text-zinc-400 ml-2">
+            ({@depreciation["model"]} model, R²={@depreciation["r_squared"]})
+          </span>
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
           <div>
             <span class="text-zinc-500">Annual Depreciation</span>
             <div class="text-xl font-bold text-orange-600">{@depreciation["annual_depreciation_pct"]}%</div>
@@ -232,6 +268,10 @@ defmodule CarscopeWeb.DashboardLive do
           <div>
             <span class="text-zinc-500">Data Points Used</span>
             <div class="font-mono">{@depreciation["data_points"]}</div>
+          </div>
+          <div :if={@depreciation["alt_r_squared"]}>
+            <span class="text-zinc-500">Alt Model R²</span>
+            <div class="font-mono text-zinc-400">{@depreciation["alt_r_squared"]}</div>
           </div>
         </div>
         <div :if={@depreciation["predictions"]} class="border-t pt-4">
@@ -260,19 +300,16 @@ defmodule CarscopeWeb.DashboardLive do
           </button>
         </div>
 
-        <%!-- Simple price chart using CSS bars --%>
-        <div :if={@snapshots != []} class="mb-6">
-          <div class="flex items-end gap-1 h-32">
-            <% max_price = Enum.max_by(@snapshots, & &1.price_cents).price_cents %>
-            <%= for snap <- Enum.take(Enum.reverse(@snapshots), 50) do %>
-              <% height = snap.price_cents / max_price * 100 %>
-              <div
-                class="bg-blue-400 hover:bg-blue-600 rounded-t flex-1 min-w-[4px] transition-colors"
-                style={"height: #{height}%"}
-                title={"$#{div(snap.price_cents, 100)} — #{snap.source}"}
-              />
-            <% end %>
-          </div>
+          <%!-- Price chart (Chart.js) --%>
+        <div
+          :if={@snapshots != []}
+          id="price-chart"
+          phx-hook="PriceChart"
+          phx-update="ignore"
+          data-snapshots={Jason.encode!(Enum.map(@snapshots, fn s -> %{time: s.time, price: div(s.price_cents, 100)} end))}
+          class="mb-6 h-64"
+        >
+          <canvas></canvas>
         </div>
 
         <div class="overflow-x-auto">
@@ -283,11 +320,12 @@ defmodule CarscopeWeb.DashboardLive do
                 <th class="py-2 pr-4">Price</th>
                 <th class="py-2 pr-4">Mileage</th>
                 <th class="py-2 pr-4">Source</th>
+                <th class="py-2 pr-4">Deal</th>
                 <th class="py-2">Link</th>
               </tr>
             </thead>
             <tbody>
-              <%= for snap <- Enum.take(@snapshots, 25) do %>
+              <%= for {snap, idx} <- Enum.take(@snapshots, 25) |> Enum.with_index() do %>
                 <tr class="border-b hover:bg-zinc-50">
                   <td class="py-2 pr-4 text-zinc-500">{format_date(snap.time)}</td>
                   <td class="py-2 pr-4 font-mono font-bold">{format_price(snap.price_cents)}</td>
@@ -299,6 +337,18 @@ defmodule CarscopeWeb.DashboardLive do
                     <% end %>
                   </td>
                   <td class="py-2 pr-4">{snap.source || "—"}</td>
+                  <td class="py-2 pr-4">
+                    <% deal = @deal_scores[idx] %>
+                    <span
+                      :if={deal}
+                      class={[
+                        "inline-block px-2 py-0.5 rounded-full text-xs font-medium",
+                        deal_badge_class(deal["label"])
+                      ]}
+                    >
+                      {deal["label"]} ({deal["score"]})
+                    </span>
+                  </td>
                   <td class="py-2">
                     <a :if={snap.url} href={snap.url} target="_blank" class="text-blue-600 hover:underline">
                       View →

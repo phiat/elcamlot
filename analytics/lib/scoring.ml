@@ -13,6 +13,11 @@ let float_of_json = function
   | `Float f -> f
   | _ -> 0.0
 
+let confidence n =
+  if n < 5 then "low"
+  else if n < 20 then "medium"
+  else "high"
+
 let deal_score json =
   match json with
   | `Assoc fields ->
@@ -26,6 +31,8 @@ let deal_score json =
     in
     if price <= 0.0 || market_prices = [] then
       `Assoc [("error", `String "Need price and market_prices")]
+    else if List.length market_prices < 3 then
+      `Assoc [("error", `String "Minimum 3 market prices required for reliable scoring")]
     else
       let sorted = List.sort Float.compare market_prices in
       let n = List.length sorted in
@@ -63,6 +70,7 @@ let deal_score json =
         ("market_mean", `Float mean);
         ("market_count", `Int n);
         ("percentile_rank", `Float (Float.round percentile_rank));
+        ("confidence", `String (confidence n));
       ]
   | _ ->
     `Assoc [("error", `String "Expected JSON object")]

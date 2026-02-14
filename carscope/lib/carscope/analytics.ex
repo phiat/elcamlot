@@ -28,7 +28,7 @@ defmodule Carscope.Analytics do
     payload = %{price: price_cents, market_prices: market_prices}
 
     case post("/deal-score", payload) do
-      {:ok, %{"score" => score}} -> {:ok, score}
+      {:ok, result} -> {:ok, result}
       {:error, reason} -> {:error, reason}
     end
   end

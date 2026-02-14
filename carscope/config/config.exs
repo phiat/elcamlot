@@ -61,6 +61,13 @@ config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
+# Hammer rate limiting
+config :hammer,
+  backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 2, cleanup_interval_ms: 60_000 * 10]}
+
+# Swoosh — disable default hackney API client (we use Local adapter in dev)
+config :swoosh, :api_client, false
+
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 

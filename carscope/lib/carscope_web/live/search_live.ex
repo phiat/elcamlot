@@ -109,8 +109,15 @@ defmodule CarscopeWeb.SearchLive do
   def render(assigns) do
     ~H"""
     <div class="max-w-6xl mx-auto px-4 py-8">
-      <h1 class="text-3xl font-bold mb-2">CarScope</h1>
-      <p class="text-zinc-500 mb-8">Search for vehicles, track prices, find deals.</p>
+      <div class="flex justify-between items-center mb-8">
+        <div>
+          <h1 class="text-3xl font-bold mb-2">CarScope</h1>
+          <p class="text-zinc-500">Search for vehicles, track prices, find deals.</p>
+        </div>
+        <.link navigate={~p"/market"} class="bg-zinc-100 hover:bg-zinc-200 text-zinc-700 px-4 py-2 rounded-md text-sm">
+          Market Analytics &rarr;
+        </.link>
+      </div>
 
       <%!-- Brave Search --%>
       <div class="bg-white rounded-lg shadow p-6 mb-8">

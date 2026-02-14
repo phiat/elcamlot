@@ -52,8 +52,16 @@ incus exec "${CONTAINER_NAME}" -- bash -c '
   echo "deb [signed-by=/usr/share/keyrings/timescaledb.gpg] https://packagecloud.io/timescale/timescaledb/ubuntu/ $(lsb_release -cs) main" \
     > /etc/apt/sources.list.d/timescaledb.list
 
+  # DuckDB repo for pg_duckdb
+  curl -fsSL https://install.duckdb.org/pgdg/gpg.key | gpg --dearmor -o /usr/share/keyrings/duckdb.gpg
+  echo "deb [signed-by=/usr/share/keyrings/duckdb.gpg] https://install.duckdb.org/pgdg $(lsb_release -cs) main" \
+    > /etc/apt/sources.list.d/duckdb.list
+
   apt-get update -qq
   apt-get install -y -qq postgresql-16 timescaledb-2-postgresql-16 >/dev/null 2>&1
+
+  # pg_duckdb (optional — analytics queries fall back to regular Postgres)
+  apt-get install -y -qq postgresql-16-pg-duckdb >/dev/null 2>&1 || echo "WARN: pg_duckdb not available, skipping"
 
   # Configure TimescaleDB
   timescaledb-tune --quiet --yes

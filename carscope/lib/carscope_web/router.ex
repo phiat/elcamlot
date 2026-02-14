@@ -19,6 +19,7 @@ defmodule CarscopeWeb.Router do
 
     live "/", SearchLive, :index
     live "/vehicle/:id", DashboardLive, :show
+    live "/market", MarketLive, :index
   end
 
   # Other scopes may use custom stacks.

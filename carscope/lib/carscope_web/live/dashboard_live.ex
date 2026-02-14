@@ -1,7 +1,7 @@
 defmodule CarscopeWeb.DashboardLive do
   use CarscopeWeb, :live_view
 
-  alias Carscope.{Vehicles, Analytics}
+  alias Carscope.{Vehicles, Analytics, MarketAnalytics}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -12,6 +12,7 @@ defmodule CarscopeWeb.DashboardLive do
     # Try analytics service (non-blocking)
     analysis = fetch_analysis(snapshots)
     depreciation = fetch_depreciation(snapshots)
+    market_position = fetch_market_position(vehicle.id)
 
     {:ok,
      socket
@@ -20,6 +21,7 @@ defmodule CarscopeWeb.DashboardLive do
      |> assign(:stats, stats)
      |> assign(:analysis, analysis)
      |> assign(:depreciation, depreciation)
+     |> assign(:market_position, market_position)
      |> assign(:searching, false)}
   end
 
@@ -75,6 +77,12 @@ defmodule CarscopeWeb.DashboardLive do
       {:ok, data} -> data
       {:error, _} -> nil
     end
+  rescue
+    _ -> nil
+  end
+
+  defp fetch_market_position(vehicle_id) do
+    MarketAnalytics.vehicle_market_position(vehicle_id)
   rescue
     _ -> nil
   end
@@ -139,6 +147,46 @@ defmodule CarscopeWeb.DashboardLive do
         <div class="bg-white rounded-lg shadow p-4">
           <div class="text-sm text-zinc-500">Data Points</div>
           <div class="text-2xl font-bold">{@stats.count}</div>
+        </div>
+      </div>
+
+      <%!-- Market Comparison (from pg_duckdb) --%>
+      <div :if={@market_position} class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-lg font-semibold mb-4">Market Comparison</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <div class="text-sm text-zinc-500">Your Avg</div>
+            <div class="text-xl font-bold">{format_price(@market_position["vehicle_avg_price"])}</div>
+          </div>
+          <div>
+            <div class="text-sm text-zinc-500">Market Avg</div>
+            <div class="text-xl font-bold">{format_price(@market_position["market_avg"])}</div>
+          </div>
+          <div>
+            <div class="text-sm text-zinc-500">Z-Score</div>
+            <div class="text-xl font-bold">
+              {if z = @market_position["z_score"], do: "#{z}", else: "—"}
+            </div>
+            <div class="text-xs text-zinc-500">
+              <%= cond do %>
+                <% (@market_position["z_score"] || 0) < -1 -> %>
+                  Well below market
+                <% (@market_position["z_score"] || 0) > 1 -> %>
+                  Well above market
+                <% true -> %>
+                  Near market average
+              <% end %>
+            </div>
+          </div>
+          <div>
+            <div class="text-sm text-zinc-500">Market Size</div>
+            <div class="text-xl font-bold">{@market_position["market_count"]} listings</div>
+          </div>
+        </div>
+        <div class="mt-3 text-right">
+          <.link navigate={~p"/market"} class="text-blue-600 hover:underline text-sm">
+            View full market analytics &rarr;
+          </.link>
         </div>
       </div>
 

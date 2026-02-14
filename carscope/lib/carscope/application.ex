@@ -12,8 +12,8 @@ defmodule Carscope.Application do
       Carscope.Repo,
       {DNSCluster, query: Application.get_env(:carscope, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Carscope.PubSub},
-      # Start a worker by calling: Carscope.Worker.start_link(arg)
-      # {Carscope.Worker, arg},
+      # Background workers
+      Carscope.MarketStatsRefresher,
       # Start to serve requests, typically the last entry
       CarscopeWeb.Endpoint
     ]

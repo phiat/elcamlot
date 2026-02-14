@@ -91,11 +91,11 @@ test-all:
 
 # Build OCaml analytics service (inside container)
 ocaml-build:
-    incus exec carscope-ocaml -- su - analytics -c 'eval $$(opam env --switch=carscope) && cd ~/app && dune build'
+    incus exec carscope-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=carscope) && cd ~/app && dune build'
 
 # Run OCaml analytics service (inside container)
 ocaml-run:
-    incus exec carscope-ocaml -- su - analytics -c 'eval $$(opam env --switch=carscope) && cd ~/app && dune exec bin/server.exe'
+    incus exec carscope-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=carscope) && cd ~/app && dune exec bin/server.exe'
 
 # Push analytics source to container and rebuild
 ocaml-deploy:
@@ -189,7 +189,7 @@ ocaml-test-depreciation:
 
 # Run OCaml analytics as background daemon
 ocaml-start:
-    incus exec carscope-ocaml -- su - analytics -c 'eval $$(opam env --switch=carscope) && cd ~/app && nohup dune exec bin/server.exe > /tmp/analytics.log 2>&1 &'
+    incus exec carscope-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=carscope) && cd ~/app && nohup dune exec bin/server.exe > /tmp/analytics.log 2>&1 &'
     @echo "Analytics service started in background"
 
 # Stop OCaml analytics daemon

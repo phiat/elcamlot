@@ -68,6 +68,9 @@ config :carscope, CarscopeWeb.Endpoint,
     ]
   ]
 
+# Swoosh local adapter for dev
+config :carscope, Carscope.Mailer, adapter: Swoosh.Adapters.Local
+
 # Enable dev routes for dashboard and mailbox
 config :carscope, dev_routes: true
 

@@ -32,6 +32,13 @@ defmodule Carscope.BraveSearch do
 
   @doc "Raw Brave Search API call."
   def search(query, opts \\ []) do
+    case Carscope.BraveSearch.Throttler.request_search() do
+      :ok -> do_search(query, opts)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp do_search(query, opts) do
     api_key = api_key()
 
     unless api_key do

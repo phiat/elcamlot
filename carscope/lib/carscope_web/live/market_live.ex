@@ -25,8 +25,15 @@ defmodule CarscopeWeb.MarketLive do
     overview = safe_query(fn -> MarketAnalytics.market_overview(days_back: days_back) end, [])
     activity = safe_query(fn -> MarketAnalytics.activity_metrics(days_back: 30) end, [])
 
+    # Add IDs for streaming
+    overview_with_ids =
+      overview
+      |> Enum.with_index()
+      |> Enum.map(fn {item, idx} -> Map.put(item, "id", "overview-#{idx}") end)
+
     socket
-    |> assign(:market_overview, overview)
+    |> assign(:overview_count, length(overview))
+    |> stream(:market_overview, overview_with_ids, reset: true, dom_id: &(&1["id"]))
     |> assign(:activity_metrics, activity)
     |> assign(:days_back, days_back)
     |> assign(:last_refresh, DateTime.utc_now())
@@ -88,7 +95,7 @@ defmodule CarscopeWeb.MarketLive do
           <p class="text-sm text-zinc-500">Average prices by make/model/year</p>
         </div>
 
-        <%= if @market_overview == [] do %>
+        <%= if @overview_count == 0 do %>
           <div class="p-6 text-zinc-500 text-center">No market data yet. Search for vehicles to build the dataset.</div>
         <% else %>
           <div class="overflow-x-auto">
@@ -104,20 +111,18 @@ defmodule CarscopeWeb.MarketLive do
                   <th class="py-3 px-4">Std Dev</th>
                 </tr>
               </thead>
-              <tbody>
-                <%= for item <- @market_overview do %>
-                  <tr class="border-t hover:bg-zinc-50">
-                    <td class="py-3 px-6 font-medium">
-                      {item["year"]} {item["make"]} {item["model"]}
-                    </td>
-                    <td class="py-3 px-4">{item["listing_count"]}</td>
-                    <td class="py-3 px-4 font-mono">{format_price(item["avg_price"])}</td>
-                    <td class="py-3 px-4 font-mono text-green-600">{format_price(item["min_price"])}</td>
-                    <td class="py-3 px-4 font-mono text-red-600">{format_price(item["max_price"])}</td>
-                    <td class="py-3 px-4 font-mono">{format_price(item["median_price"])}</td>
-                    <td class="py-3 px-4 font-mono text-zinc-500">{format_price(item["stddev"])}</td>
-                  </tr>
-                <% end %>
+              <tbody id="market-overview" phx-update="stream">
+                <tr :for={{dom_id, item} <- @streams.market_overview} id={dom_id} class="border-t hover:bg-zinc-50">
+                  <td class="py-3 px-6 font-medium">
+                    {item["year"]} {item["make"]} {item["model"]}
+                  </td>
+                  <td class="py-3 px-4">{item["listing_count"]}</td>
+                  <td class="py-3 px-4 font-mono">{format_price(item["avg_price"])}</td>
+                  <td class="py-3 px-4 font-mono text-green-600">{format_price(item["min_price"])}</td>
+                  <td class="py-3 px-4 font-mono text-red-600">{format_price(item["max_price"])}</td>
+                  <td class="py-3 px-4 font-mono">{format_price(item["median_price"])}</td>
+                  <td class="py-3 px-4 font-mono text-zinc-500">{format_price(item["stddev"])}</td>
+                </tr>
               </tbody>
             </table>
           </div>

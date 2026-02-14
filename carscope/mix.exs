@@ -63,7 +63,10 @@ defmodule Carscope.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:req, "~> 0.5"}
+      {:req, "~> 0.5"},
+      {:hammer, "~> 6.2"},
+      {:bcrypt_elixir, "~> 3.0"},
+      {:swoosh, "~> 1.4"}
     ]
   end
 

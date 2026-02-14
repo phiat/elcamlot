@@ -5,11 +5,15 @@ defmodule CarscopeWeb.SearchLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    vehicles = Vehicles.list_vehicles()
+
     {:ok,
      socket
      |> assign(:query, "")
-     |> assign(:results, [])
-     |> assign(:vehicles, Vehicles.list_vehicles())
+     |> assign(:result_count, 0)
+     |> assign(:vehicle_count, length(vehicles))
+     |> stream(:results, [])
+     |> stream(:vehicles, vehicles)
      |> assign(:searching, false)
      |> assign(:error, nil)}
   end
@@ -27,21 +31,34 @@ defmodule CarscopeWeb.SearchLive do
 
   def handle_event("search-db", %{"term" => term}, socket) do
     vehicles = if term == "", do: Vehicles.list_vehicles(), else: Vehicles.search_vehicles(term)
-    {:noreply, assign(socket, vehicles: vehicles)}
+
+    {:noreply,
+     socket
+     |> assign(:vehicle_count, length(vehicles))
+     |> stream(:vehicles, vehicles, reset: true)}
   end
 
   @impl true
   def handle_info({:do_search, query}, socket) do
     case BraveSearch.search_cars(query) do
       {:ok, results} ->
-        # Store results as price snapshots
         saved = save_results(query, results)
+
+        # Add unique IDs for stream
+        results_with_ids =
+          results
+          |> Enum.with_index()
+          |> Enum.map(fn {r, idx} -> Map.put(r, :id, "result-#{idx}-#{:erlang.phash2(r.url)}") end)
+
+        vehicles = Vehicles.list_vehicles()
 
         {:noreply,
          socket
-         |> assign(:results, results)
+         |> assign(:result_count, length(results))
+         |> stream(:results, results_with_ids, reset: true)
+         |> assign(:vehicle_count, length(vehicles))
+         |> stream(:vehicles, vehicles, reset: true)
          |> assign(:searching, false)
-         |> assign(:vehicles, Vehicles.list_vehicles())
          |> put_flash(:info, "Found #{length(results)} listings, saved #{saved} prices")}
 
       {:error, :missing_api_key} ->
@@ -91,7 +108,6 @@ defmodule CarscopeWeb.SearchLive do
   end
 
   defp parse_vehicle_from_query(query) do
-    # Try to extract year make model from query
     case Regex.run(~r/(\d{4})\s+(\w+)\s+(\w+)/i, query) do
       [_, year, make, model] ->
         Vehicles.find_or_create_vehicle(%{
@@ -143,29 +159,27 @@ defmodule CarscopeWeb.SearchLive do
           <div class="mt-4 p-3 bg-red-50 text-red-700 rounded">{@error}</div>
         <% end %>
 
-        <%= if @results != [] do %>
+        <%= if @result_count > 0 do %>
           <div class="mt-6">
-            <h3 class="font-medium mb-3">Results ({length(@results)} with prices)</h3>
-            <div class="space-y-3">
-              <%= for result <- @results do %>
-                <div class="border rounded p-3">
-                  <div class="flex justify-between">
-                    <a href={result.url} target="_blank" class="text-blue-600 hover:underline font-medium">
-                      {result.title}
-                    </a>
-                    <span class="text-green-700 font-bold">
-                      ${div(result.price_cents, 100) |> Integer.to_string() |> format_number()}
-                    </span>
-                  </div>
-                  <p class="text-sm text-zinc-500 mt-1">{result.description}</p>
-                  <div class="text-xs text-zinc-400 mt-1">
-                    Source: {result.source}
-                    <%= if result.mileage do %>
-                      · {result.mileage |> Integer.to_string() |> format_number()} mi
-                    <% end %>
-                  </div>
+            <h3 class="font-medium mb-3">Results ({@result_count} with prices)</h3>
+            <div id="search-results" class="space-y-3" phx-update="stream">
+              <div :for={{dom_id, result} <- @streams.results} id={dom_id} class="border rounded p-3">
+                <div class="flex justify-between">
+                  <a href={result.url} target="_blank" class="text-blue-600 hover:underline font-medium">
+                    {result.title}
+                  </a>
+                  <span class="text-green-700 font-bold">
+                    ${div(result.price_cents, 100) |> Integer.to_string() |> format_number()}
+                  </span>
                 </div>
-              <% end %>
+                <p class="text-sm text-zinc-500 mt-1">{result.description}</p>
+                <div class="text-xs text-zinc-400 mt-1">
+                  Source: {result.source}
+                  <%= if result.mileage do %>
+                    · {result.mileage |> Integer.to_string() |> format_number()} mi
+                  <% end %>
+                </div>
+              </div>
             </div>
           </div>
         <% end %>
@@ -173,7 +187,7 @@ defmodule CarscopeWeb.SearchLive do
 
       <%!-- Vehicle Database --%>
       <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-lg font-semibold mb-4">Vehicle Database ({length(@vehicles)} vehicles)</h2>
+        <h2 class="text-lg font-semibold mb-4">Vehicle Database ({@vehicle_count} vehicles)</h2>
         <.form for={%{}} phx-change="search-db" class="mb-4">
           <input
             type="text"
@@ -195,20 +209,18 @@ defmodule CarscopeWeb.SearchLive do
                 <th class="py-2"></th>
               </tr>
             </thead>
-            <tbody>
-              <%= for vehicle <- @vehicles do %>
-                <tr class="border-b hover:bg-zinc-50">
-                  <td class="py-2 pr-4">{vehicle.year}</td>
-                  <td class="py-2 pr-4">{vehicle.make}</td>
-                  <td class="py-2 pr-4">{vehicle.model}</td>
-                  <td class="py-2 pr-4 text-zinc-500">{vehicle.trim || "—"}</td>
-                  <td class="py-2">
-                    <.link navigate={~p"/vehicle/#{vehicle.id}"} class="text-blue-600 hover:underline">
-                      Dashboard →
-                    </.link>
-                  </td>
-                </tr>
-              <% end %>
+            <tbody id="vehicles-table" phx-update="stream">
+              <tr :for={{dom_id, vehicle} <- @streams.vehicles} id={dom_id} class="border-b hover:bg-zinc-50">
+                <td class="py-2 pr-4">{vehicle.year}</td>
+                <td class="py-2 pr-4">{vehicle.make}</td>
+                <td class="py-2 pr-4">{vehicle.model}</td>
+                <td class="py-2 pr-4 text-zinc-500">{vehicle.trim || "—"}</td>
+                <td class="py-2">
+                  <.link navigate={~p"/vehicle/#{vehicle.id}"} class="text-blue-600 hover:underline">
+                    Dashboard →
+                  </.link>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>

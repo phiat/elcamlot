@@ -1,5 +1,8 @@
 import Config
 
+# Only in tests, remove the complexity from the password hashing algorithm
+config :bcrypt_elixir, :log_rounds, 1
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used
@@ -19,6 +22,9 @@ config :carscope, CarscopeWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "CtArh4d3N8B5dbwcB5id5pLX0pHD/pD6DdJts0S1BqUQcrGJsrry5iK1q8JBfl1x",
   server: false
+
+# Swoosh test adapter
+config :carscope, Carscope.Mailer, adapter: Swoosh.Adapters.Test
 
 # Print only warnings and errors during test
 config :logger, level: :warning

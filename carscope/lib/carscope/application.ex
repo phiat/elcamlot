@@ -10,9 +10,11 @@ defmodule Carscope.Application do
     children = [
       CarscopeWeb.Telemetry,
       Carscope.Repo,
+      {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 2, cleanup_interval_ms: 60_000 * 10]},
       {DNSCluster, query: Application.get_env(:carscope, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Carscope.PubSub},
       # Background workers
+      Carscope.BraveSearch.Throttler,
       Carscope.MarketStatsRefresher,
       # Start to serve requests, typically the last entry
       CarscopeWeb.Endpoint

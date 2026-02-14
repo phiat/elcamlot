@@ -23,6 +23,27 @@ defmodule Carscope.Vehicles do
     |> Repo.all()
   end
 
+  def list_makes do
+    from(v in Vehicle, select: v.make, distinct: true, order_by: v.make)
+    |> Repo.all()
+  end
+
+  def list_vehicles_by_make(make) do
+    from(v in Vehicle,
+      left_join: p in PriceSnapshot, on: p.vehicle_id == v.id,
+      where: v.make == ^make,
+      group_by: v.id,
+      order_by: [asc: v.model, desc: v.year],
+      select: %{v | trim: v.trim},
+      select_merge: %{
+        avg_price: type(fragment("ROUND(AVG(?))::bigint", p.price_cents), :integer),
+        snapshot_count: count(p.vehicle_id),
+        latest_snapshot_at: max(p.time)
+      }
+    )
+    |> Repo.all()
+  end
+
   def get_vehicle!(id), do: Repo.get!(Vehicle, id)
 
   def find_or_create_vehicle(attrs) do

@@ -6,12 +6,15 @@ defmodule CarscopeWeb.SearchLive do
   @impl true
   def mount(_params, _session, socket) do
     vehicles = Vehicles.list_vehicles()
+    makes = Vehicles.list_makes()
 
     {:ok,
      socket
      |> assign(:query, "")
      |> assign(:result_count, 0)
      |> assign(:vehicle_count, length(vehicles))
+     |> assign(:makes, makes)
+     |> assign(:active_make, nil)
      |> stream(:results, [])
      |> stream(:vehicles, vehicles)
      |> assign(:searching, false)
@@ -35,6 +38,22 @@ defmodule CarscopeWeb.SearchLive do
     {:noreply,
      socket
      |> assign(:vehicle_count, length(vehicles))
+     |> assign(:active_make, nil)
+     |> stream(:vehicles, vehicles, reset: true)}
+  end
+
+  def handle_event("filter-make", %{"make" => make}, socket) do
+    {active_make, vehicles} =
+      if socket.assigns.active_make == make do
+        {nil, Vehicles.list_vehicles()}
+      else
+        {make, Vehicles.list_vehicles_by_make(make)}
+      end
+
+    {:noreply,
+     socket
+     |> assign(:active_make, active_make)
+     |> assign(:vehicle_count, length(vehicles))
      |> stream(:vehicles, vehicles, reset: true)}
   end
 
@@ -51,12 +70,15 @@ defmodule CarscopeWeb.SearchLive do
           |> Enum.map(fn {r, idx} -> Map.put(r, :id, "result-#{idx}-#{:erlang.phash2(r.url)}") end)
 
         vehicles = Vehicles.list_vehicles()
+        makes = Vehicles.list_makes()
 
         {:noreply,
          socket
          |> assign(:result_count, length(results))
          |> stream(:results, results_with_ids, reset: true)
          |> assign(:vehicle_count, length(vehicles))
+         |> assign(:makes, makes)
+         |> assign(:active_make, nil)
          |> stream(:vehicles, vehicles, reset: true)
          |> assign(:searching, false)
          |> put_flash(:info, "Found #{length(results)} listings, saved #{saved} prices")}
@@ -189,6 +211,23 @@ defmodule CarscopeWeb.SearchLive do
       <%!-- Vehicle Database --%>
       <div class="bg-base-100 rounded-lg shadow p-6">
         <h2 class="text-lg font-semibold mb-4">Vehicles ({@vehicle_count})</h2>
+
+        <div class="flex flex-wrap gap-2 mb-4">
+          <button
+            :for={make <- @makes}
+            phx-click="filter-make"
+            phx-value-make={make}
+            class={[
+              "px-3 py-1 rounded-full text-sm font-medium transition-colors",
+              if(@active_make == make,
+                do: "bg-primary text-primary-content",
+                else: "bg-base-200 text-base-content/70 hover:bg-base-300")
+            ]}
+          >
+            {make}
+          </button>
+        </div>
+
         <.form for={%{}} phx-change="search-db" class="mb-4">
           <input
             type="text"

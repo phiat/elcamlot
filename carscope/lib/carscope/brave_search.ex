@@ -106,10 +106,8 @@ defmodule Carscope.BraveSearch do
   defp extract_price(text) do
     case Regex.run(~r/\$([0-9]{1,3}(?:,?[0-9]{3})*)\b/, text) do
       [_, price_str] ->
-        price_str
-        |> String.replace(",", "")
-        |> String.to_integer()
-        |> Kernel.*(100)
+        cleaned = String.replace(price_str, ",", "")
+        if cleaned == "", do: nil, else: String.to_integer(cleaned) * 100
 
       nil ->
         nil
@@ -119,7 +117,8 @@ defmodule Carscope.BraveSearch do
   defp extract_mileage(text) do
     case Regex.run(~r/([\d,]+)\s*(?:mi(?:les?)?|k\s*mi)/i, text) do
       [_, miles_str] ->
-        miles_str |> String.replace(",", "") |> String.to_integer()
+        cleaned = String.replace(miles_str, ",", "")
+        if cleaned == "", do: nil, else: String.to_integer(cleaned)
 
       nil ->
         nil

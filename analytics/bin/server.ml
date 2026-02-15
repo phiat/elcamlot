@@ -105,4 +105,13 @@ let () =
       | exception Yojson.Json_error msg ->
         Dream.json ~status:`Bad_Request
           (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
+
+    Dream.post "/momentum" (fun request ->
+      let%lwt body = Dream.body request in
+      match Yojson.Safe.from_string body with
+      | json ->
+        respond_with_result (Momentum.analyze json)
+      | exception Yojson.Json_error msg ->
+        Dream.json ~status:`Bad_Request
+          (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
   ]

@@ -91,11 +91,11 @@ test-all:
 
 # Build OCaml analytics service (inside container)
 ocaml-build:
-    incus exec elcamlot-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=elcamlot) && cd ~/app && dune build'
+    incus exec elcamlot-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=carscope) && cd ~/app && dune build'
 
 # Run OCaml analytics service (inside container)
 ocaml-run:
-    incus exec elcamlot-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=elcamlot) && cd ~/app && dune exec bin/server.exe'
+    incus exec elcamlot-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=carscope) && cd ~/app && dune exec bin/server.exe'
 
 # Push analytics source to container and rebuild
 ocaml-deploy:
@@ -189,7 +189,7 @@ ocaml-test-depreciation:
 
 # Run OCaml analytics as background daemon
 ocaml-start:
-    incus exec elcamlot-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=elcamlot) && cd ~/app && nohup dune exec bin/server.exe > /tmp/analytics.log 2>&1 &'
+    incus exec elcamlot-ocaml -- su - analytics -c 'eval $(/usr/bin/opam env --switch=carscope) && cd ~/app && nohup dune exec bin/server.exe > /tmp/analytics.log 2>&1 &'
     @echo "Analytics service started in background"
 
 # Stop OCaml analytics daemon
@@ -260,6 +260,38 @@ alpaca-stats:
 # Test Alpaca API health (fetch AAPL snapshot)
 alpaca-health:
     cd elcamlot && ELCAMLOT_PG_HOST=$(just pg-ip) mix run -e 'IO.inspect(Elcamlot.Alpaca.fetch_snapshot("AAPL"))'
+
+# --- Data Import/Export (pg_duckdb) ---
+
+# Export price_bars to CSV
+export-bars:
+    incus exec elcamlot-pg -- sudo -u postgres psql -d elcamlot -c \
+        "COPY (SELECT pb.time, i.symbol, pb.open_cents, pb.high_cents, pb.low_cents, pb.close_cents, pb.volume, pb.timeframe FROM price_bars pb JOIN instruments i ON i.id = pb.instrument_id ORDER BY pb.time) TO STDOUT WITH CSV HEADER" \
+        > price_bars_export.csv
+    @echo "Exported to price_bars_export.csv ($(wc -l < price_bars_export.csv) lines)"
+
+# Export price_snapshots to CSV
+export-snapshots:
+    incus exec elcamlot-pg -- sudo -u postgres psql -d elcamlot -c \
+        "COPY (SELECT ps.time, v.make, v.model, v.year, v.trim, ps.price_cents, ps.mileage, ps.source, ps.location, ps.url, ps.condition FROM price_snapshots ps JOIN vehicles v ON v.id = ps.vehicle_id ORDER BY ps.time) TO STDOUT WITH CSV HEADER" \
+        > price_snapshots_export.csv
+    @echo "Exported to price_snapshots_export.csv ($(wc -l < price_snapshots_export.csv) lines)"
+
+# Import a CSV via pg_duckdb read_csv (usage: just import-csv bars /path/to/data.csv)
+import-csv table file:
+    incus file push {{file}} elcamlot-pg/tmp/import.csv
+    incus file push infra/duckdb-ingest.sql elcamlot-pg/tmp/duckdb-ingest.sql
+    @echo "Importing {{file}} into {{table}}..."
+    incus exec elcamlot-pg -- sudo -u postgres psql -d elcamlot \
+        -v import_file="'/tmp/import.csv'" \
+        -v target_table="'{{table}}'" \
+        -f /tmp/duckdb-ingest.sql
+    @echo "Import complete."
+
+# Run cross-domain analytical queries (vehicles vs markets)
+cross-analysis:
+    incus file push infra/cross-domain-queries.sql elcamlot-pg/tmp/cross-domain-queries.sql
+    incus exec elcamlot-pg -- sudo -u postgres psql -d elcamlot -f /tmp/cross-domain-queries.sql
 
 # --- Cleanup ---
 

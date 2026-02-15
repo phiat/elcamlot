@@ -50,6 +50,7 @@ defmodule ElcamlotWeb.Router do
     live "/watchlist", WatchlistLive, :index
     live "/finance", FinanceLive, :index
     live "/finance/:id", FinanceDashboardLive, :show
+    live "/cross-analytics", CrossAnalyticsLive, :index
 
     get "/users/settings", UserSettingsController, :edit
     put "/users/settings", UserSettingsController, :update

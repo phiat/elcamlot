@@ -243,6 +243,24 @@ versions:
     @echo "  TimescaleDB:  2.25.0"
     @echo "  pg_duckdb:    1.1.1"
 
+# --- Alpaca Markets ---
+
+# Seed historical bars for a symbol (usage: just alpaca-seed AAPL)
+alpaca-seed symbol:
+    cd carscope && CARSCOPE_PG_HOST=$(just pg-ip) mix run -e 'Carscope.Alpaca.Seeder.seed("{{symbol}}")'
+
+# Seed multiple symbols
+alpaca-seed-batch:
+    cd carscope && CARSCOPE_PG_HOST=$(just pg-ip) mix run -e 'Carscope.Alpaca.Seeder.seed_many(~w(AAPL MSFT GOOGL AMZN TSLA SPY QQQ))'
+
+# Show instrument stats
+alpaca-stats:
+    @just sql "SELECT i.symbol, count(b.*) as bars, min(b.time)::date as first, max(b.time)::date as last, round(avg(b.close_cents)/100, 2) as avg_close FROM instruments i LEFT JOIN price_bars b ON i.id = b.instrument_id GROUP BY i.id ORDER BY i.symbol;"
+
+# Test Alpaca API health (fetch AAPL snapshot)
+alpaca-health:
+    cd carscope && CARSCOPE_PG_HOST=$(just pg-ip) mix run -e 'IO.inspect(Carscope.Alpaca.fetch_snapshot("AAPL"))'
+
 # --- Cleanup ---
 
 # Remove all project containers and data

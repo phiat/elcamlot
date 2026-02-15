@@ -85,6 +85,29 @@ defmodule Carscope.Analytics do
     end
   end
 
+  @doc "Compute period returns, cumulative returns, and Sharpe ratio."
+  def returns(prices, opts \\ []) do
+    payload = %{prices: prices}
+    payload = if rf = Keyword.get(opts, :risk_free_rate), do: Map.put(payload, :risk_free_rate, rf), else: payload
+
+    case post("/returns", payload) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc "Compute SMA/EMA moving averages with crossover detection."
+  def moving_averages(prices, opts \\ []) do
+    payload = %{prices: prices}
+    payload = if sw = Keyword.get(opts, :short_window), do: Map.put(payload, :short_window, sw), else: payload
+    payload = if lw = Keyword.get(opts, :long_window), do: Map.put(payload, :long_window, lw), else: payload
+
+    case post("/moving-averages", payload) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   @doc "Health check for the analytics service."
   def healthy? do
     case Req.get(client(), url: "/health") do

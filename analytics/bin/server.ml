@@ -69,4 +69,22 @@ let () =
       | exception Yojson.Json_error msg ->
         Dream.json ~status:`Bad_Request
           (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
+
+    Dream.post "/volatility" (fun request ->
+      let%lwt body = Dream.body request in
+      match Yojson.Safe.from_string body with
+      | json ->
+        respond_with_result (Volatility.analyze json)
+      | exception Yojson.Json_error msg ->
+        Dream.json ~status:`Bad_Request
+          (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
+
+    Dream.post "/correlation" (fun request ->
+      let%lwt body = Dream.body request in
+      match Yojson.Safe.from_string body with
+      | json ->
+        respond_with_result (Correlation.analyze json)
+      | exception Yojson.Json_error msg ->
+        Dream.json ~status:`Bad_Request
+          (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
   ]

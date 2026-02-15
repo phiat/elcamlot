@@ -65,6 +65,26 @@ defmodule Carscope.Analytics do
     end
   end
 
+  @doc "Calculate historical volatility from a price series."
+  def volatility(prices, opts \\ []) do
+    payload = %{prices: prices}
+    payload = if w = Keyword.get(opts, :window), do: Map.put(payload, :window, w), else: payload
+    payload = if d = Keyword.get(opts, :trading_days), do: Map.put(payload, :trading_days, d), else: payload
+
+    case post("/volatility", payload) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc "Compute Pearson correlation between two series."
+  def correlation(series_a, series_b) when is_list(series_a) and is_list(series_b) do
+    case post("/correlation", %{series_a: series_a, series_b: series_b}) do
+      {:ok, result} -> {:ok, result}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   @doc "Health check for the analytics service."
   def healthy? do
     case Req.get(client(), url: "/health") do

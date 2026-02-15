@@ -66,7 +66,8 @@ defmodule Carscope.MixProject do
       {:req, "~> 0.5"},
       {:hammer, "~> 6.2"},
       {:bcrypt_elixir, "~> 3.0"},
-      {:swoosh, "~> 1.4"}
+      {:swoosh, "~> 1.4"},
+      {:alpa_ex, github: "phiat/alpa_ex"}
     ]
   end
 

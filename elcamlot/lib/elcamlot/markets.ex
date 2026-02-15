@@ -40,6 +40,11 @@ defmodule Elcamlot.Markets do
     Repo.insert_all(PriceBar, bars)
   end
 
+  @doc "Insert bars with ON CONFLICT DO NOTHING (safe for repeated polling)."
+  def upsert_bars(bars) when is_list(bars) do
+    Repo.insert_all(PriceBar, bars, on_conflict: :nothing)
+  end
+
   def list_bars(instrument_id, opts \\ []) do
     timeframe = Keyword.get(opts, :timeframe, "1D")
     limit = Keyword.get(opts, :limit, 365)

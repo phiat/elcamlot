@@ -40,6 +40,42 @@ defmodule Elcamlot.Alpaca do
   end
 
   @doc """
+  Fetch historical bars for a crypto symbol (e.g., "BTC/USD").
+  Uses the crypto market data API which is available 24/7.
+  """
+  def fetch_crypto_bars(symbol, opts \\ []) do
+    config = config()
+
+    case Alpa.crypto_bars(symbol, Keyword.merge(default_crypto_bar_opts(), opts) ++ [config: config]) do
+      {:ok, bars} ->
+        {:ok, bars}
+
+      {:error, %Alpa.Error{} = err} ->
+        Logger.warning("Alpaca crypto bars error for #{symbol}: #{inspect(err)}")
+        {:error, err}
+
+      {:error, reason} ->
+        Logger.error("Alpaca crypto bars failed for #{symbol}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Fetch the latest bar for a crypto symbol.
+  """
+  def fetch_crypto_latest(symbol) do
+    config = config()
+
+    case Alpa.crypto_latest_bars(symbol, config: config) do
+      {:ok, [bar | _]} -> {:ok, bar}
+      {:ok, []} -> {:error, :no_data}
+      {:error, reason} ->
+        Logger.warning("Alpaca crypto latest error for #{symbol}: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Fetch available assets from Alpaca.
   """
   def list_assets(opts \\ []) do
@@ -59,12 +95,17 @@ defmodule Elcamlot.Alpaca do
       high_cents: decimal_to_cents(bar.high),
       low_cents: decimal_to_cents(bar.low),
       close_cents: decimal_to_cents(bar.close),
-      volume: bar.volume || 0,
+      volume: to_integer_volume(bar.volume),
       timeframe: timeframe
     }
   end
 
   # --- Private ---
+
+  defp to_integer_volume(nil), do: 0
+  defp to_integer_volume(v) when is_integer(v), do: v
+  defp to_integer_volume(v) when is_float(v), do: round(v)
+  defp to_integer_volume(%Decimal{} = v), do: v |> Decimal.round(0) |> Decimal.to_integer()
 
   defp decimal_to_cents(%Decimal{} = d) do
     d |> Decimal.mult(100) |> Decimal.round(0) |> Decimal.to_integer()
@@ -72,6 +113,14 @@ defmodule Elcamlot.Alpaca do
 
   defp decimal_to_cents(n) when is_float(n), do: round(n * 100)
   defp decimal_to_cents(n) when is_integer(n), do: n * 100
+
+  defp default_crypto_bar_opts do
+    [
+      timeframe: "15Min",
+      start: DateTime.utc_now() |> DateTime.add(-1, :hour) |> DateTime.to_iso8601(),
+      limit: 10
+    ]
+  end
 
   defp default_bar_opts do
     [

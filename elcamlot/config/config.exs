@@ -72,7 +72,9 @@ config :elcamlot, Oban,
   plugins: [
     {Oban.Plugins.Cron, crontab: [
       {"0 * * * *", Elcamlot.Workers.SearchSchedulerWorker},
-      {"30 2 * * *", Elcamlot.Workers.DealScoreWorker}
+      {"30 2 * * *", Elcamlot.Workers.DealScoreWorker},
+      {"*/15 * * * *", Elcamlot.Workers.CryptoBarWorker},
+      {"0 22 * * 1-5", Elcamlot.Workers.DailyBarWorker}
     ]}
   ]
 

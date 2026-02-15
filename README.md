@@ -10,15 +10,17 @@ Phoenix Web App (host)
 ├── Alpaca Markets SDK (equities data)
 ├── Brave Search API (vehicle listings)
 ├── Ecto → Postgres (OLTP + time-series)
-├── Oban (scheduled jobs, price alerts)
+├── Oban (scheduled jobs, market data polling)
+├── WebSocket streaming (real-time bars via Alpaca)
 └── HTTP client → OCaml Analytics
 
 OCaml Analytics Service (Incus container)
 ├── REST API (Dream framework)
 ├── Financial: volatility, correlation, returns, moving averages, momentum/RSI
+├── Advanced: Monte Carlo simulation, Bayesian estimation, buy timing
 ├── Vehicle: deal scoring, depreciation curves, outlier detection
 ├── General: data quality grading, histogram/distribution analysis
-└── 12 POST endpoints + health check
+└── 15 POST endpoints + health check
 
 Postgres + TimescaleDB + pg_duckdb (Incus container)
 ├── Financial instruments + price bars (hypertable)
@@ -31,9 +33,11 @@ Postgres + TimescaleDB + pg_duckdb (Incus container)
 ## Features
 
 **Financial Markets**
-- Real-time equity snapshots via Alpaca Markets API
-- Historical daily bars with automated seeding
+- Real-time equity streaming via Alpaca WebSocket (1-min bars, IEX feed)
+- Crypto polling every 15 min (BTC/USD, ETH/USD) — 24/7 data collection
+- Historical daily bars + 5-min intraday backfill (30 days)
 - Volatility, correlation, returns, moving averages, momentum/RSI analysis
+- Monte Carlo simulation, Bayesian estimation, optimal buy timing
 - Instrument dashboard with Chart.js visualizations
 
 **Vehicle Price Intelligence**
@@ -52,7 +56,10 @@ Postgres + TimescaleDB + pg_duckdb (Incus container)
 - User auth with scoped sessions (bcrypt + tokens)
 - Watchlists with configurable price drop alerts
 - Dark/light theme with DaisyUI
-- 40+ justfile tasks for dev workflow
+- CSV export for vehicles and instruments
+- Shareable read-only views via time-limited tokens
+- Side-by-side vehicle comparison (2-4 at once)
+- 45+ justfile tasks for dev workflow
 
 ## Tech Stack
 
@@ -90,7 +97,7 @@ elcamlot/
 │   ├── lib/elcamlot/   # Contexts (Markets, Vehicles, Watchlist, Accounts)
 │   └── lib/elcamlot_web/  # LiveViews, controllers, components
 ├── analytics/          # OCaml analytics service
-│   ├── lib/            # Analysis modules (12 total)
+│   ├── lib/            # Analysis modules (15 total)
 │   └── bin/            # Dream HTTP server
 ├── infra/              # Incus provisioning, SQL scripts
 ├── scripts/            # Dev workflow
@@ -105,7 +112,9 @@ just info               # Connection URLs
 just console            # Phoenix iex console
 just test               # Run tests
 just ocaml-health       # Test analytics API
-just alpaca-seed-batch  # Seed 7 symbols with 250 daily bars each
+just alpaca-seed-batch  # Seed 7 symbols with daily bars
+just backfill-intraday  # Backfill 30 days of 5-min bars
+just stream-status      # Check WebSocket stream status
 just cross-analysis     # Run cross-domain analytical queries
 just export-bars        # Export price_bars to CSV
 just versions           # Check all tool versions

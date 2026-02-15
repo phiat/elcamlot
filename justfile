@@ -293,6 +293,18 @@ cross-analysis:
     incus file push infra/cross-domain-queries.sql elcamlot-pg/tmp/cross-domain-queries.sql
     incus exec elcamlot-pg -- sudo -u postgres psql -d elcamlot -f /tmp/cross-domain-queries.sql
 
+# Backfill 30 days of 5-minute intraday bars for equities
+backfill-intraday:
+    cd elcamlot && ELCAMLOT_PG_HOST=$(just pg-ip) mix run -e 'Elcamlot.Workers.IntradayBackfillWorker.run()'
+
+# Backfill intraday bars for a single symbol (usage: just backfill-symbol AAPL)
+backfill-symbol symbol:
+    cd elcamlot && ELCAMLOT_PG_HOST=$(just pg-ip) mix run -e 'Elcamlot.Workers.IntradayBackfillWorker.run(["{{symbol}}"])'
+
+# Check market data stream status
+stream-status:
+    cd elcamlot && ELCAMLOT_PG_HOST=$(just pg-ip) mix run -e 'IO.inspect(Elcamlot.MarketDataStream.status())'
+
 # --- Cleanup ---
 
 # Remove all project containers and data

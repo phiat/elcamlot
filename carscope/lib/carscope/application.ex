@@ -12,6 +12,8 @@ defmodule Carscope.Application do
       Carscope.Repo,
       {DNSCluster, query: Application.get_env(:carscope, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Carscope.PubSub},
+      # Job processing
+      {Oban, Application.fetch_env!(:carscope, Oban)},
       # Background workers
       Carscope.BraveSearch.Throttler,
       Carscope.MarketStatsRefresher,

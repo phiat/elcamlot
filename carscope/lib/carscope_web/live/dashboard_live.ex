@@ -2,7 +2,7 @@ defmodule CarscopeWeb.DashboardLive do
   use CarscopeWeb, :live_view
 
   require Logger
-  alias Carscope.{Vehicles, Analytics, MarketAnalytics}
+  alias Carscope.{Vehicles, Analytics, MarketAnalytics, Watchlist}
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -29,7 +29,8 @@ defmodule CarscopeWeb.DashboardLive do
      |> assign(:data_quality, data_quality)
      |> assign(:outliers, outliers)
      |> assign(:dom_stats, dom_stats)
-     |> assign(:searching, false)}
+     |> assign(:searching, false)
+     |> assign(:alert_form, to_form(%{"target_price" => "", "alert_type" => "below"}))}
   end
 
   @impl true
@@ -40,6 +41,33 @@ defmodule CarscopeWeb.DashboardLive do
     socket = assign(socket, searching: true)
     send(self(), {:do_search, query})
     {:noreply, socket}
+  end
+
+  def handle_event("set-alert", %{"target_price" => price_str, "alert_type" => alert_type}, socket) do
+    user = socket.assigns.current_scope.user
+    vehicle = socket.assigns.vehicle
+
+    case Integer.parse(price_str) do
+      {dollars, _} when dollars > 0 ->
+        case Watchlist.create_alert(%{
+          user_id: user.id,
+          vehicle_id: vehicle.id,
+          target_price_cents: dollars * 100,
+          alert_type: alert_type
+        }) do
+          {:ok, _alert} ->
+            {:noreply,
+             socket
+             |> assign(:alert_form, to_form(%{"target_price" => "", "alert_type" => "below"}))
+             |> put_flash(:info, "Price alert set for $#{dollars}")}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Failed to create alert")}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, "Enter a valid dollar amount")}
+    end
   end
 
   @impl true
@@ -396,6 +424,28 @@ defmodule CarscopeWeb.DashboardLive do
             </div>
           <% end %>
         </div>
+      </div>
+
+      <%!-- Price Alert --%>
+      <div class="bg-base-100 rounded-lg shadow p-6 mb-8">
+        <h2 class="text-lg font-semibold mb-3">Set Price Alert</h2>
+        <.form for={@alert_form} phx-submit="set-alert" class="flex gap-3 items-end">
+          <div>
+            <label class="text-sm text-base-content/60 block mb-1">Target Price ($)</label>
+            <input type="number" name="target_price" value={@alert_form[:target_price].value}
+              placeholder="25000" min="1" class="input input-bordered input-sm w-32" required />
+          </div>
+          <div>
+            <label class="text-sm text-base-content/60 block mb-1">When</label>
+            <select name="alert_type" class="select select-bordered select-sm">
+              <option value="below">Price drops below</option>
+              <option value="above">Price goes above</option>
+            </select>
+          </div>
+          <button type="submit" class="bg-primary text-primary-content px-4 py-1.5 rounded text-sm hover:bg-primary/80">
+            Set Alert
+          </button>
+        </.form>
       </div>
 
       <%!-- Price History --%>

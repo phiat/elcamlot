@@ -47,6 +47,7 @@ defmodule CarscopeWeb.Router do
     live "/", SearchLive, :index
     live "/vehicle/:id", DashboardLive, :show
     live "/market", MarketLive, :index
+    live "/watchlist", WatchlistLive, :index
     live "/finance", FinanceLive, :index
     live "/finance/:id", FinanceDashboardLive, :show
 

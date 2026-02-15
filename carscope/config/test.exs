@@ -23,6 +23,9 @@ config :carscope, CarscopeWeb.Endpoint,
   secret_key_base: "CtArh4d3N8B5dbwcB5id5pLX0pHD/pD6DdJts0S1BqUQcrGJsrry5iK1q8JBfl1x",
   server: false
 
+# Disable Oban in tests
+config :carscope, Oban, testing: :inline
+
 # Swoosh test adapter
 config :carscope, Carscope.Mailer, adapter: Swoosh.Adapters.Test
 

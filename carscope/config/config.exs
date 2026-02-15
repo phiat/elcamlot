@@ -65,6 +65,16 @@ config :logger, :default_formatter,
 config :hammer,
   backend: {Hammer.Backend.ETS, [expiry_ms: 60_000 * 60 * 2, cleanup_interval_ms: 60_000 * 10]}
 
+# Oban job processing
+config :carscope, Oban,
+  repo: Carscope.Repo,
+  queues: [default: 5, scraping: 2],
+  plugins: [
+    {Oban.Plugins.Cron, crontab: [
+      {"0 * * * *", Carscope.Workers.SearchSchedulerWorker}
+    ]}
+  ]
+
 # Swoosh — disable default hackney API client (we use Local adapter in dev)
 config :swoosh, :api_client, false
 

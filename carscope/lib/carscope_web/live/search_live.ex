@@ -144,9 +144,17 @@ defmodule CarscopeWeb.SearchLive do
           <h1 class="text-3xl font-bold mb-2">CarScope</h1>
           <p class="text-base-content/60">Search for vehicles, track prices, find deals.</p>
         </div>
-        <.link navigate={~p"/market"} class="bg-base-200 hover:bg-base-300 text-base-content/80 px-4 py-2 rounded-md text-sm">
-          Market Analytics &rarr;
-        </.link>
+        <div class="flex gap-2">
+          <.link navigate={~p"/watchlist"} class="bg-base-200 hover:bg-base-300 text-base-content/80 px-4 py-2 rounded-md text-sm">
+            Watchlist
+          </.link>
+          <.link navigate={~p"/finance"} class="bg-base-200 hover:bg-base-300 text-base-content/80 px-4 py-2 rounded-md text-sm">
+            Finance
+          </.link>
+          <.link navigate={~p"/market"} class="bg-base-200 hover:bg-base-300 text-base-content/80 px-4 py-2 rounded-md text-sm">
+            Market Analytics
+          </.link>
+        </div>
       </div>
 
       <%!-- Brave Search (collapsed by default) --%>

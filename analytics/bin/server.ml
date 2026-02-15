@@ -114,4 +114,31 @@ let () =
       | exception Yojson.Json_error msg ->
         Dream.json ~status:`Bad_Request
           (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
+
+    Dream.post "/bayesian-estimate" (fun request ->
+      let%lwt body = Dream.body request in
+      match Yojson.Safe.from_string body with
+      | json ->
+        respond_with_result (Bayesian.estimate json)
+      | exception Yojson.Json_error msg ->
+        Dream.json ~status:`Bad_Request
+          (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
+
+    Dream.post "/simulate" (fun request ->
+      let%lwt body = Dream.body request in
+      match Yojson.Safe.from_string body with
+      | json ->
+        respond_with_result (Monte_carlo.analyze json)
+      | exception Yojson.Json_error msg ->
+        Dream.json ~status:`Bad_Request
+          (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
+
+    Dream.post "/buy-timing" (fun request ->
+      let%lwt body = Dream.body request in
+      match Yojson.Safe.from_string body with
+      | json ->
+        respond_with_result (Buy_timing.analyze json)
+      | exception Yojson.Json_error msg ->
+        Dream.json ~status:`Bad_Request
+          (Printf.sprintf {|{"error":"Invalid JSON: %s"}|} msg));
   ]

@@ -12,7 +12,7 @@ if [ -f "${PROJECT_ROOT}/.env" ]; then
   echo "==> Loaded .env"
 fi
 
-echo "==> Starting CarScope dev environment..."
+echo "==> Starting Elcamlot dev environment..."
 
 # Ensure containers are up
 echo "==> Setting up Postgres..."
@@ -23,19 +23,19 @@ echo "==> Setting up OCaml analytics..."
 bash "${PROJECT_ROOT}/infra/setup-ocaml.sh"
 
 # Get container IPs
-PG_IP=$(incus list carscope-pg --format csv -c 4 | cut -d' ' -f1)
-OCAML_IP=$(incus list carscope-ocaml --format csv -c 4 | cut -d' ' -f1)
+PG_IP=$(incus list elcamlot-pg --format csv -c 4 | cut -d' ' -f1)
+OCAML_IP=$(incus list elcamlot-ocaml --format csv -c 4 | cut -d' ' -f1)
 
 echo ""
 echo "==> Dev environment ready!"
-echo "    Postgres:  postgres://carscope:carscope@${PG_IP}:5432/carscope"
+echo "    Postgres:  postgres://elcamlot:elcamlot@${PG_IP}:5432/elcamlot"
 echo "    OCaml API: http://${OCAML_IP}:8080"
 echo ""
 echo "==> Starting Phoenix..."
-cd "${PROJECT_ROOT}/carscope"
+cd "${PROJECT_ROOT}/elcamlot"
 
-export CARSCOPE_PG_HOST="${PG_IP}"
-export DATABASE_URL="postgres://carscope:carscope@${PG_IP}:5432/carscope"
+export ELCAMLOT_PG_HOST="${PG_IP}"
+export DATABASE_URL="postgres://elcamlot:elcamlot@${PG_IP}:5432/elcamlot"
 export ANALYTICS_URL="http://${OCAML_IP}:8080"
 
 mix phx.server

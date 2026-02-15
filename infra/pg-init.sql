@@ -1,4 +1,4 @@
--- CarScope database schema
+-- Elcamlot database schema
 -- Extensions: TimescaleDB for time-series, pg_duckdb for analytics
 
 CREATE EXTENSION IF NOT EXISTS timescaledb;

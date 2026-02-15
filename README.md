@@ -1,4 +1,4 @@
-# CarScope
+# Elcamlot
 
 Car research & price intelligence platform. Search for vehicles, track prices over time, and get market analytics.
 
@@ -51,7 +51,7 @@ pg_duckdb embeds DuckDB's columnar query engine inside Postgres, letting you run
 - Can't use TimescaleDB hypertable features and DuckDB columnar on the same table
 - Query planner interaction is opaque — hard to know when DuckDB path kicks in
 
-**When it would matter for CarScope:**
+**When it would matter for Elcamlot:**
 - Bulk importing price data from external CSV/Parquet dumps (e.g., historical auction data)
 - Cross-market aggregations across millions of snapshots
 - Ad-hoc analysis in psql without spinning up a Jupyter notebook
@@ -87,7 +87,7 @@ mise install
 ./infra/setup-ocaml.sh
 
 # Start Phoenix app
-cd carscope && mix deps.get && mix phx.server
+cd elcamlot && mix deps.get && mix phx.server
 
 # Or start everything at once
 ./scripts/dev.sh
@@ -98,7 +98,7 @@ cd carscope && mix deps.get && mix phx.server
 ```
 tc-lander/
 ├── infra/          # Incus container management scripts
-├── carscope/       # Phoenix application
+├── elcamlot/       # Phoenix application
 ├── analytics/      # OCaml analytics service
 └── scripts/        # Dev workflow scripts
 ```

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTAINERS=("carscope-pg" "carscope-ocaml")
+CONTAINERS=("elcamlot-pg" "elcamlot-ocaml")
 
-echo "==> Tearing down CarScope containers..."
+echo "==> Tearing down Elcamlot containers..."
 
 for container in "${CONTAINERS[@]}"; do
   if incus info "${container}" &>/dev/null; then

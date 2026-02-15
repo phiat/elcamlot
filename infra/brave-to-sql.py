@@ -2,7 +2,7 @@
 """brave-to-sql.py
 
 Convert Brave Search JSONL results (from brave-search-carvana.sh) into
-a PostgreSQL seed file for the CarScope vehicles + price_snapshots tables.
+a PostgreSQL seed file for the Elcamlot vehicles + price_snapshots tables.
 
 Usage:
     python3 brave-to-sql.py <carvana_results.jsonl> [--output seed-file.sql]

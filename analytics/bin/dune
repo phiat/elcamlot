@@ -1,4 +1,4 @@
 (executable
  (name server)
- (libraries dream yojson carscope_analytics)
+ (libraries dream yojson elcamlot_analytics)
  (preprocess (pps lwt_ppx)))

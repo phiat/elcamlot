@@ -1,4 +1,4 @@
 (library
- (name carscope_analytics)
+ (name elcamlot_analytics)
  (wrapped false)
  (libraries yojson))

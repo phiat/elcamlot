@@ -2,10 +2,10 @@
 .env
 
 # Elixir/Phoenix
-carscope/_build/
-carscope/deps/
-carscope/.elixir_ls/
-carscope/priv/static/assets/
+elcamlot/_build/
+elcamlot/deps/
+elcamlot/.elixir_ls/
+elcamlot/priv/static/assets/
 
 # OCaml
 analytics/_build/

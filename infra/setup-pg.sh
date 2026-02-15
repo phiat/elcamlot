@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTAINER_NAME="carscope-pg"
+CONTAINER_NAME="elcamlot-pg"
 IMAGE="images:ubuntu/noble"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -16,7 +16,7 @@ if incus info "${CONTAINER_NAME}" &>/dev/null; then
     incus start "${CONTAINER_NAME}"
   fi
   echo "==> Container is running"
-  incus exec "${CONTAINER_NAME}" -- pg_isready -U carscope && echo "==> Postgres is ready" && exit 0
+  incus exec "${CONTAINER_NAME}" -- pg_isready -U elcamlot && echo "==> Postgres is ready" && exit 0
   echo "Postgres not ready yet, waiting..."
 fi
 
@@ -80,19 +80,19 @@ incus exec "${CONTAINER_NAME}" -- bash -c '
   systemctl restart postgresql
   systemctl enable postgresql
 
-  # Create carscope database and user
-  sudo -u postgres psql -c "CREATE USER carscope WITH PASSWORD '\''carscope'\'' CREATEDB;"
-  sudo -u postgres psql -c "CREATE DATABASE carscope OWNER carscope;"
-  sudo -u postgres psql -d carscope -c "GRANT ALL PRIVILEGES ON DATABASE carscope TO carscope;"
+  # Create elcamlot database and user
+  sudo -u postgres psql -c "CREATE USER elcamlot WITH PASSWORD '\''elcamlot'\'' CREATEDB;"
+  sudo -u postgres psql -c "CREATE DATABASE elcamlot OWNER elcamlot;"
+  sudo -u postgres psql -d elcamlot -c "GRANT ALL PRIVILEGES ON DATABASE elcamlot TO elcamlot;"
 '
 
 echo "==> Loading schema..."
 incus file push "${SCRIPT_DIR}/pg-init.sql" "${CONTAINER_NAME}/tmp/pg-init.sql"
-incus exec "${CONTAINER_NAME}" -- sudo -u postgres psql -d carscope -f /tmp/pg-init.sql
+incus exec "${CONTAINER_NAME}" -- sudo -u postgres psql -d elcamlot -f /tmp/pg-init.sql
 
 echo "==> Waiting for Postgres to be ready..."
 for i in $(seq 1 15); do
-  if incus exec "${CONTAINER_NAME}" -- pg_isready -U carscope 2>/dev/null; then
+  if incus exec "${CONTAINER_NAME}" -- pg_isready -U elcamlot 2>/dev/null; then
     break
   fi
   sleep 1
@@ -105,9 +105,9 @@ echo "==> Postgres container ready!"
 echo "    Container: ${CONTAINER_NAME}"
 echo "    IP:        ${PG_IP}"
 echo "    Port:      5432"
-echo "    Database:  carscope"
-echo "    User:      carscope"
-echo "    Password:  carscope"
+echo "    Database:  elcamlot"
+echo "    User:      elcamlot"
+echo "    Password:  elcamlot"
 echo ""
 echo "    Connection string:"
-echo "    postgres://carscope:carscope@${PG_IP}:5432/carscope"
+echo "    postgres://elcamlot:elcamlot@${PG_IP}:5432/elcamlot"

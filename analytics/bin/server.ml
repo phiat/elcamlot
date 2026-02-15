@@ -1,4 +1,4 @@
-(** CarScope Analytics Service — Dream HTTP server *)
+(** Elcamlot Analytics Service — Dream HTTP server *)
 
 (** Check if result contains a validation error and return appropriate status *)
 let respond_with_result result =

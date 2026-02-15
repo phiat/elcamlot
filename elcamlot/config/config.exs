@@ -71,7 +71,8 @@ config :elcamlot, Oban,
   queues: [default: 5, scraping: 2],
   plugins: [
     {Oban.Plugins.Cron, crontab: [
-      {"0 * * * *", Elcamlot.Workers.SearchSchedulerWorker}
+      {"0 * * * *", Elcamlot.Workers.SearchSchedulerWorker},
+      {"30 2 * * *", Elcamlot.Workers.DealScoreWorker}
     ]}
   ]
 

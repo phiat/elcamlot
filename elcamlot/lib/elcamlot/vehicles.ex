@@ -4,7 +4,7 @@ defmodule Elcamlot.Vehicles do
   """
   import Ecto.Query
   alias Elcamlot.Repo
-  alias Elcamlot.Vehicles.{Vehicle, PriceSnapshot, SearchQuery}
+  alias Elcamlot.Vehicles.{Vehicle, PriceSnapshot, DealScore, SearchQuery}
 
   # --- Vehicles ---
 
@@ -179,6 +179,42 @@ defmodule Elcamlot.Vehicles do
       {:error, _} ->
         []
     end
+  end
+
+  # --- Deal Scores ---
+
+  @doc "Record a deal score for a vehicle."
+  def record_deal_score(vehicle, score_data) do
+    %DealScore{}
+    |> DealScore.changeset(
+      Map.merge(score_data, %{
+        vehicle_id: vehicle.id,
+        computed_at: DateTime.utc_now()
+      })
+    )
+    |> Repo.insert()
+  end
+
+  @doc "Get deal score history for a vehicle, ordered by computed_at ascending."
+  def deal_score_history(vehicle_id, opts \\ []) do
+    limit = Keyword.get(opts, :limit, 90)
+
+    from(ds in DealScore,
+      where: ds.vehicle_id == ^vehicle_id,
+      order_by: [asc: ds.computed_at],
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
+
+  @doc "Get the most recent deal score for a vehicle."
+  def latest_deal_score(vehicle_id) do
+    from(ds in DealScore,
+      where: ds.vehicle_id == ^vehicle_id,
+      order_by: [desc: ds.computed_at],
+      limit: 1
+    )
+    |> Repo.one()
   end
 
   # --- Search Queries ---

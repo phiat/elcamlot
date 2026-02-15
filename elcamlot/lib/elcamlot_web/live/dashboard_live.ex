@@ -17,6 +17,9 @@ defmodule ElcamlotWeb.DashboardLive do
     data_quality = fetch_data_quality(prices)
     outliers = fetch_outliers(prices)
     dom_stats = Vehicles.days_on_market_stats(vehicle.id)
+    score_history = Vehicles.deal_score_history(vehicle.id)
+    latest_score = Vehicles.latest_deal_score(vehicle.id)
+    score_trend = compute_score_trend(score_history)
 
     {:ok,
      socket
@@ -29,11 +32,22 @@ defmodule ElcamlotWeb.DashboardLive do
      |> assign(:data_quality, data_quality)
      |> assign(:outliers, outliers)
      |> assign(:dom_stats, dom_stats)
+     |> assign(:score_history, score_history)
+     |> assign(:latest_score, latest_score)
+     |> assign(:score_trend, score_trend)
      |> assign(:searching, false)
+     |> assign(:share_link, nil)
      |> assign(:alert_form, to_form(%{"target_price" => "", "alert_type" => "below"}))}
   end
 
   @impl true
+  def handle_event("create-share-link", _params, socket) do
+    vehicle = socket.assigns.vehicle
+    token = ElcamlotWeb.ShareController.generate_token(vehicle.id)
+    url = ElcamlotWeb.Endpoint.url() <> "/share/#{token}"
+    {:noreply, assign(socket, :share_link, url)}
+  end
+
   def handle_event("refresh-prices", _params, socket) do
     vehicle = socket.assigns.vehicle
     query = "#{vehicle.year} #{vehicle.make} #{vehicle.model} price for sale"
@@ -50,11 +64,11 @@ defmodule ElcamlotWeb.DashboardLive do
     case Integer.parse(price_str) do
       {dollars, _} when dollars > 0 ->
         case Watchlist.create_alert(%{
-          user_id: user.id,
-          vehicle_id: vehicle.id,
-          target_price_cents: dollars * 100,
-          alert_type: alert_type
-        }) do
+               user_id: user.id,
+               vehicle_id: vehicle.id,
+               target_price_cents: dollars * 100,
+               alert_type: alert_type
+             }) do
           {:ok, _alert} ->
             {:noreply,
              socket
@@ -95,13 +109,25 @@ defmodule ElcamlotWeb.DashboardLive do
         data_quality = fetch_data_quality(prices)
         outliers = fetch_outliers(prices)
         dom_stats = Vehicles.days_on_market_stats(vehicle.id)
+        score_history = Vehicles.deal_score_history(vehicle.id)
+        latest_score = Vehicles.latest_deal_score(vehicle.id)
+        score_trend = compute_score_trend(score_history)
 
         {:noreply,
          socket
-         |> assign(snapshots: snapshots, stats: stats,
-                   depreciation: depreciation, deal_scores: deal_scores,
-                   data_quality: data_quality, outliers: outliers,
-                   dom_stats: dom_stats, searching: false)
+         |> assign(
+           snapshots: snapshots,
+           stats: stats,
+           depreciation: depreciation,
+           deal_scores: deal_scores,
+           data_quality: data_quality,
+           outliers: outliers,
+           dom_stats: dom_stats,
+           score_history: score_history,
+           latest_score: latest_score,
+           score_trend: score_trend,
+           searching: false
+         )
          |> put_flash(:info, "Added #{length(results)} price points")}
 
       {:error, reason} ->
@@ -152,7 +178,6 @@ defmodule ElcamlotWeb.DashboardLive do
       nil
   end
 
-
   defp fetch_data_quality(prices) when length(prices) < 3, do: nil
 
   defp fetch_data_quality(prices) do
@@ -179,6 +204,38 @@ defmodule ElcamlotWeb.DashboardLive do
       nil
   end
 
+  defp compute_score_trend(history) when length(history) < 2, do: :stable
+
+  defp compute_score_trend(history) do
+    recent = Enum.take(history, -5)
+    first_score = hd(recent).score
+    last_score = List.last(recent).score
+    diff = last_score - first_score
+
+    cond do
+      diff > 3.0 -> :improving
+      diff < -3.0 -> :declining
+      true -> :stable
+    end
+  end
+
+  defp trend_label(:improving), do: {"Improving", "text-success"}
+  defp trend_label(:declining), do: {"Declining", "text-error"}
+  defp trend_label(:stable), do: {"Stable", "text-info"}
+
+  defp trend_arrow(:improving), do: "^"
+  defp trend_arrow(:declining), do: "v"
+  defp trend_arrow(:stable), do: "~"
+
+  defp score_chart_data(score_history) do
+    Enum.map(score_history, fn ds ->
+      %{
+        computed_at: DateTime.to_iso8601(ds.computed_at),
+        score: ds.score
+      }
+    end)
+  end
+
   defp freshness_class(days) when is_integer(days) do
     cond do
       days >= 60 -> {"Stale", "bg-error/10 text-error"}
@@ -188,19 +245,49 @@ defmodule ElcamlotWeb.DashboardLive do
     end
   end
 
-  defp freshness_class(_), do: {"—", ""}
+  defp freshness_class(_), do: {"---", ""}
 
   @impl true
   def render(assigns) do
     ~H"""
     <div class="max-w-6xl mx-auto px-4 py-8">
-      <.link navigate={~p"/"} class="text-primary hover:underline text-sm">← Back to search</.link>
+      <.link navigate={~p"/"} class="text-primary hover:underline text-sm">&larr; Back to search</.link>
 
       <div class="mt-4 mb-8">
-        <h1 class="text-3xl font-bold">
-          {@vehicle.year} {@vehicle.make} {@vehicle.model}
-        </h1>
-        <p :if={@vehicle.trim} class="text-base-content/60">{@vehicle.trim}</p>
+        <div class="flex items-start justify-between">
+          <div>
+            <h1 class="text-3xl font-bold">
+              {@vehicle.year} {@vehicle.make} {@vehicle.model}
+            </h1>
+            <p :if={@vehicle.trim} class="text-base-content/60">{@vehicle.trim}</p>
+          </div>
+          <div class="flex gap-2 mt-1">
+            <a
+              href={~p"/export/vehicles/#{@vehicle.id}/csv"}
+              class="bg-base-200 hover:bg-base-300 text-base-content px-3 py-1.5 rounded text-sm"
+            >
+              Export CSV
+            </a>
+            <button
+              phx-click="create-share-link"
+              class="bg-base-200 hover:bg-base-300 text-base-content px-3 py-1.5 rounded text-sm"
+            >
+              Share
+            </button>
+          </div>
+        </div>
+
+        <div :if={@share_link} class="mt-3 p-3 bg-info/10 rounded-lg text-sm">
+          <div class="text-base-content/60 mb-1">Share this link (valid for 7 days):</div>
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              value={@share_link}
+              readonly
+              class="input input-bordered input-sm flex-1 font-mono text-xs"
+            />
+          </div>
+        </div>
       </div>
 
       <%!-- Stats Cards --%>
@@ -270,7 +357,7 @@ defmodule ElcamlotWeb.DashboardLive do
           <div>
             <div class="text-sm text-base-content/60">Z-Score</div>
             <div class="text-xl font-bold">
-              {if z = @market_position["z_score"], do: "#{z}", else: "—"}
+              {if z = @market_position["z_score"], do: "#{z}", else: "---"}
             </div>
             <div class="text-xs text-base-content/60">
               <%= cond do %>
@@ -395,10 +482,67 @@ defmodule ElcamlotWeb.DashboardLive do
               <% end %>
             </div>
           <% else %>
-            <p class="text-sm text-success">No outliers detected — data looks clean.</p>
+            <p class="text-sm text-success">No outliers detected -- data looks clean.</p>
           <% end %>
           <div class="mt-3 text-xs text-base-content/40">
-            IQR bounds: {format_price(@outliers["thresholds"]["iqr_lower"])} – {format_price(@outliers["thresholds"]["iqr_upper"])}
+            IQR bounds: {format_price(@outliers["thresholds"]["iqr_lower"])} -- {format_price(@outliers["thresholds"]["iqr_upper"])}
+          </div>
+        </div>
+      </div>
+
+      <%!-- Deal Score History --%>
+      <div :if={@score_history != []} class="bg-base-100 rounded-lg shadow p-6 mb-8">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold">
+            Deal Score History
+            <% {trend_text, trend_class} = trend_label(@score_trend) %>
+            <span class={"ml-2 text-sm font-normal #{trend_class}"}>
+              {trend_arrow(@score_trend)} {trend_text}
+            </span>
+          </h2>
+          <div :if={@latest_score} class="text-right">
+            <div class="text-sm text-base-content/60">Current Score</div>
+            <div class={[
+              "text-2xl font-bold",
+              cond do
+                @latest_score.score >= 70 -> "text-success"
+                @latest_score.score >= 40 -> "text-warning"
+                true -> "text-error"
+              end
+            ]}>
+              {Float.round(@latest_score.score, 1)}
+            </div>
+          </div>
+        </div>
+
+        <div
+          id="deal-score-chart"
+          phx-hook="DealScoreChart"
+          phx-update="ignore"
+          data-scores={Jason.encode!(score_chart_data(@score_history))}
+          class="mb-4 h-48"
+        >
+          <canvas></canvas>
+        </div>
+
+        <div :if={@latest_score} class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm border-t pt-4">
+          <div>
+            <span class="text-base-content/60">Vehicle Price</span>
+            <div class="font-mono font-bold">{format_price(@latest_score.vehicle_price_cents)}</div>
+          </div>
+          <div>
+            <span class="text-base-content/60">Market Avg</span>
+            <div class="font-mono">{format_price(@latest_score.market_avg_cents)}</div>
+          </div>
+          <div>
+            <span class="text-base-content/60">Percentile</span>
+            <div class="font-mono">
+              {if @latest_score.percentile_rank, do: "#{Float.round(@latest_score.percentile_rank, 1)}%", else: "---"}
+            </div>
+          </div>
+          <div>
+            <span class="text-base-content/60">Data Points</span>
+            <div class="font-mono">{length(@score_history)} scores</div>
           </div>
         </div>
       </div>
@@ -432,8 +576,15 @@ defmodule ElcamlotWeb.DashboardLive do
         <.form for={@alert_form} phx-submit="set-alert" class="flex gap-3 items-end">
           <div>
             <label class="text-sm text-base-content/60 block mb-1">Target Price ($)</label>
-            <input type="number" name="target_price" value={@alert_form[:target_price].value}
-              placeholder="25000" min="1" class="input input-bordered input-sm w-32" required />
+            <input
+              type="number"
+              name="target_price"
+              value={@alert_form[:target_price].value}
+              placeholder="25000"
+              min="1"
+              class="input input-bordered input-sm w-32"
+              required
+            />
           </div>
           <div>
             <label class="text-sm text-base-content/60 block mb-1">When</label>
@@ -442,7 +593,10 @@ defmodule ElcamlotWeb.DashboardLive do
               <option value="above">Price goes above</option>
             </select>
           </div>
-          <button type="submit" class="bg-primary text-primary-content px-4 py-1.5 rounded text-sm hover:bg-primary/80">
+          <button
+            type="submit"
+            class="bg-primary text-primary-content px-4 py-1.5 rounded text-sm hover:bg-primary/80"
+          >
             Set Alert
           </button>
         </.form>
@@ -461,7 +615,7 @@ defmodule ElcamlotWeb.DashboardLive do
           </button>
         </div>
 
-          <%!-- Price chart (Chart.js) --%>
+        <%!-- Price chart (Chart.js) --%>
         <div
           :if={@snapshots != []}
           id="price-chart"
@@ -494,10 +648,10 @@ defmodule ElcamlotWeb.DashboardLive do
                     <%= if snap.mileage do %>
                       {snap.mileage |> Integer.to_string() |> format_number()} mi
                     <% else %>
-                      —
+                      ---
                     <% end %>
                   </td>
-                  <td class="py-2 pr-4">{snap.source || "—"}</td>
+                  <td class="py-2 pr-4">{snap.source || "---"}</td>
                   <td class="py-2 pr-4">
                     <% deal = @deal_scores[idx] %>
                     <span
@@ -512,7 +666,7 @@ defmodule ElcamlotWeb.DashboardLive do
                   </td>
                   <td class="py-2">
                     <a :if={snap.url} href={snap.url} target="_blank" class="text-primary hover:underline">
-                      View →
+                      View &rarr;
                     </a>
                   </td>
                 </tr>

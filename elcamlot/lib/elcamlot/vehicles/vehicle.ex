@@ -14,6 +14,7 @@ defmodule Elcamlot.Vehicles.Vehicle do
     field :latest_snapshot_at, :utc_datetime, virtual: true
 
     has_many :price_snapshots, Elcamlot.Vehicles.PriceSnapshot
+    has_many :deal_scores, Elcamlot.Vehicles.DealScore
 
     timestamps(type: :utc_datetime, updated_at: false, inserted_at: :created_at)
   end

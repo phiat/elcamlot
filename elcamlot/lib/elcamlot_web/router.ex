@@ -51,10 +51,22 @@ defmodule ElcamlotWeb.Router do
     live "/finance", FinanceLive, :index
     live "/finance/:id", FinanceDashboardLive, :show
     live "/cross-analytics", CrossAnalyticsLive, :index
+    live "/compare", CompareLive, :index
+
+    get "/export/vehicles/:id/csv", ExportController, :vehicle_csv
+    get "/export/instruments/:id/csv", ExportController, :instrument_csv
 
     get "/users/settings", UserSettingsController, :edit
     put "/users/settings", UserSettingsController, :update
     get "/users/settings/confirm-email/:token", UserSettingsController, :confirm_email
+  end
+
+  # Public share routes (no authentication required)
+  scope "/", ElcamlotWeb do
+    pipe_through [:browser]
+
+    get "/share/:token", ShareController, :show
+    live "/shared/:id", SharedLive, :show
   end
 
   scope "/", ElcamlotWeb do

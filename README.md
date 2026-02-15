@@ -1,112 +1,112 @@
 # Elcamlot
 
-Car research & price intelligence platform. Search for vehicles, track prices over time, and get market analytics.
+Multi-domain analytics platform built with Elixir/Phoenix and OCaml. Tracks financial markets and vehicle prices, runs statistical analysis, and surfaces cross-domain correlations.
 
 ## Architecture
 
 ```
 Phoenix Web App (host)
-├── LiveView UI / Dashboard
-├── Brave Search API client
-├── Ecto → Postgres (OLTP + stats)
+├── LiveView dashboards (finance, vehicles, cross-analytics)
+├── Alpaca Markets SDK (equities data)
+├── Brave Search API (vehicle listings)
+├── Ecto → Postgres (OLTP + time-series)
+├── Oban (scheduled jobs, price alerts)
 └── HTTP client → OCaml Analytics
 
 OCaml Analytics Service (Incus container)
-├── REST API (Dream)
-├── Deal scoring & depreciation curves
-├── Outlier detection (IQR + MAD)
-├── Data quality grading (A-F)
-└── Histogram / binned distribution
+├── REST API (Dream framework)
+├── Financial: volatility, correlation, returns, moving averages, momentum/RSI
+├── Vehicle: deal scoring, depreciation curves, outlier detection
+├── General: data quality grading, histogram/distribution analysis
+└── 12 POST endpoints + health check
 
-Postgres (Incus container)
-├── Core data (vehicles, snapshots, users)
-├── TimescaleDB (time-series bucketing)
-├── Aggregation queries (AVG, percentiles, STDDEV)
-└── pg_duckdb (installed, ad-hoc analysis)
+Postgres + TimescaleDB + pg_duckdb (Incus container)
+├── Financial instruments + price bars (hypertable)
+├── Vehicles + price snapshots (hypertable)
+├── Users, saved searches, price alerts
+├── Materialized views for market stats
+└── pg_duckdb for bulk CSV/Parquet ingest
 ```
 
-## What Each Layer Does
+## Features
 
-**Postgres** — source of truth + aggregation. Stores all vehicles, price snapshots, search logs, and users. Handles CRUD, filtering, JOINs, and statistical aggregates (AVG, MIN/MAX, PERCENTILE_CONT, STDDEV). TimescaleDB provides `time_bucket()` for time-series queries. Materialized views cache market overviews.
+**Financial Markets**
+- Real-time equity snapshots via Alpaca Markets API
+- Historical daily bars with automated seeding
+- Volatility, correlation, returns, moving averages, momentum/RSI analysis
+- Instrument dashboard with Chart.js visualizations
 
-**OCaml (Dream)** — compute that Postgres can't easily do. Exponential/linear depreciation curve fitting with R². Weighted deal scoring (percentile rank + distance blending). Outlier detection via modified Z-scores (MAD) and IQR fencing. Data quality grading with skewness, kurtosis, and coefficient of variation. Histogram binning with multimodal detection.
+**Vehicle Price Intelligence**
+- Web search via Brave Search API with rate limiting
+- Price tracking over time with TimescaleDB
+- Deal scoring, depreciation curves, outlier detection
+- Saved searches with scheduled re-scraping (Oban)
 
-**pg_duckdb** — installed in the Postgres container for ad-hoc analytical queries and future bulk data ingest. Currently not used by the application directly — all live queries use standard Postgres + TimescaleDB. See notes below.
+**Cross-Domain Analytics**
+- Compare vehicle depreciation against stock/index performance
+- Pearson correlation with dual-axis Chart.js overlay
+- pg_duckdb bulk ingest + cross-domain SQL queries
+- Monthly trend analysis across asset classes
 
-## pg_duckdb: Pros, Cons, and Use Cases
-
-pg_duckdb embeds DuckDB's columnar query engine inside Postgres, letting you run OLAP-style queries without a separate warehouse.
-
-**Pros:**
-- Columnar scans are 10-100x faster than row-based Postgres for aggregations over large datasets
-- Can query external Parquet/CSV files directly (useful for bulk data ingest from scrapers)
-- No separate service to deploy — runs as a Postgres extension
-- Same SQL interface, same connection, same transactions
-- Good for periodic batch analytics (e.g., weekly market reports)
-
-**Cons:**
-- Adds memory overhead to the Postgres container
-- Not useful at small data volumes — Postgres is already fast enough for <100K rows
-- Extension maturity — pg_duckdb is newer and less battle-tested than pure Postgres
-- Can't use TimescaleDB hypertable features and DuckDB columnar on the same table
-- Query planner interaction is opaque — hard to know when DuckDB path kicks in
-
-**When it would matter for Elcamlot:**
-- Bulk importing price data from external CSV/Parquet dumps (e.g., historical auction data)
-- Cross-market aggregations across millions of snapshots
-- Ad-hoc analysis in psql without spinning up a Jupyter notebook
-- Currently overkill for our data volume — keeping it installed for future use
+**Platform**
+- User auth with scoped sessions (bcrypt + tokens)
+- Watchlists with configurable price drop alerts
+- Dark/light theme with DaisyUI
+- 40+ justfile tasks for dev workflow
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Web app | Elixir 1.19 / Phoenix 1.8 LiveView |
-| Analytics | OCaml 5.2.1 + Dream web framework |
+| Layer | Technology |
+|-------|-----------|
+| Web | Elixir 1.19 / Phoenix 1.8 / LiveView 1.1 |
+| Analytics | OCaml 5.x + Dream |
 | Database | Postgres 16 + TimescaleDB + pg_duckdb |
+| Market data | Alpaca Markets (alpa_ex SDK) |
 | Search | Brave Search API |
-| Containers | Incus (not Docker) |
+| Jobs | Oban |
+| Containers | Incus |
 
-## How It Works
-
-1. Search for a car (e.g., "2021 Toyota Camry")
-2. Brave Search fetches current listings/prices from the web
-3. Prices are stored as time-series data in Postgres/TimescaleDB
-4. Postgres computes stats (avg, median, percentiles, std dev)
-5. OCaml service computes deal scores, depreciation curves, outliers, data quality
-6. Phoenix LiveView renders dashboard with charts and recommendations
-
-## Setup
+## Quick Start
 
 ```bash
-# Install dependencies via mise
-mise install
-
-# Provision Incus containers (Postgres + OCaml analytics)
-./infra/setup-pg.sh
-./infra/setup-ocaml.sh
-
-# Start Phoenix app
-cd elcamlot && mix deps.get && mix phx.server
-
-# Or start everything at once
+# Provision containers and start everything
+just up
 ./scripts/dev.sh
+
+# Or step by step
+just pg-up              # Postgres + TimescaleDB
+just ocaml-up           # OCaml analytics service
+just ocaml-deploy       # Push + build analytics
+just ocaml-start        # Start analytics daemon
+just migrate            # Run Ecto migrations
+just server             # Start Phoenix
 ```
 
 ## Project Structure
 
 ```
-tc-lander/
-├── infra/          # Incus container management scripts
-├── elcamlot/       # Phoenix application
-├── analytics/      # OCaml analytics service
-└── scripts/        # Dev workflow scripts
+elcamlot/
+├── elcamlot/           # Phoenix application
+│   ├── lib/elcamlot/   # Contexts (Markets, Vehicles, Watchlist, Accounts)
+│   └── lib/elcamlot_web/  # LiveViews, controllers, components
+├── analytics/          # OCaml analytics service
+│   ├── lib/            # Analysis modules (12 total)
+│   └── bin/            # Dream HTTP server
+├── infra/              # Incus provisioning, SQL scripts
+├── scripts/            # Dev workflow
+└── justfile            # Task runner (40+ commands)
 ```
 
-## Learning Goals
+## Useful Commands
 
-- Testcontainers-style workflows using Incus (not Docker)
-- Custom container lifecycle management from Elixir
-- TimescaleDB for time-series price data
-- pg_duckdb for analytical queries (ad-hoc for now)
-- OCaml for numerical analysis (curve fitting, outlier detection, scoring)
+```bash
+just ps                 # Container status
+just info               # Connection URLs
+just console            # Phoenix iex console
+just test               # Run tests
+just ocaml-health       # Test analytics API
+just alpaca-seed-batch  # Seed 7 symbols with 250 daily bars each
+just cross-analysis     # Run cross-domain analytical queries
+just export-bars        # Export price_bars to CSV
+just versions           # Check all tool versions
+```

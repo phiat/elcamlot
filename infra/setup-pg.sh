@@ -81,7 +81,7 @@ incus exec "${CONTAINER_NAME}" -- bash -c '
   systemctl enable postgresql
 
   # Create elcamlot database and user
-  sudo -u postgres psql -c "CREATE USER elcamlot WITH PASSWORD '\''elcamlot'\'' CREATEDB;"
+  sudo -u postgres psql -c "CREATE USER elcamlot WITH PASSWORD '\''${PG_PASSWORD:-elcamlot}'\'' CREATEDB;"
   sudo -u postgres psql -c "CREATE DATABASE elcamlot OWNER elcamlot;"
   sudo -u postgres psql -d elcamlot -c "GRANT ALL PRIVILEGES ON DATABASE elcamlot TO elcamlot;"
 '
@@ -107,7 +107,7 @@ echo "    IP:        ${PG_IP}"
 echo "    Port:      5432"
 echo "    Database:  elcamlot"
 echo "    User:      elcamlot"
-echo "    Password:  elcamlot"
+echo "    Password:  \${PG_PASSWORD:-elcamlot}  (override with PG_PASSWORD env var)"
 echo ""
 echo "    Connection string:"
-echo "    postgres://elcamlot:elcamlot@${PG_IP}:5432/elcamlot"
+echo "    postgres://elcamlot:\${PG_PASSWORD:-elcamlot}@${PG_IP}:5432/elcamlot"

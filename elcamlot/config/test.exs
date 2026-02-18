@@ -20,7 +20,7 @@ config :elcamlot, Elcamlot.Repo,
 # you can enable the server option below.
 config :elcamlot, ElcamlotWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "CtArh4d3N8B5dbwcB5id5pLX0pHD/pD6DdJts0S1BqUQcrGJsrry5iK1q8JBfl1x",
+  secret_key_base: "test-only-replace-me-with-mix-phx-gen-secret-in-production-00000000000000",
   server: false
 
 # Disable Oban in tests

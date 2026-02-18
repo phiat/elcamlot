@@ -11,6 +11,9 @@ elcamlot/priv/static/assets/
 analytics/_build/
 analytics/_opam/
 
+# Beads issue tracker
+.beads/
+
 # Editor
 *.swp
 *~

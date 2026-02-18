@@ -24,7 +24,7 @@ config :elcamlot, ElcamlotWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "jvlsYF39aNjSvAIdyqt/0ZJ6RVDhy2Df4LzaMzyZjkIMiK0sNUTGAD5/Ds30JbFz",
+  secret_key_base: "dev-only-replace-me-with-mix-phx-gen-secret-in-production-00000000000000",
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:elcamlot, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:elcamlot, ~w(--watch)]}

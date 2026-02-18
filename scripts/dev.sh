@@ -28,14 +28,14 @@ OCAML_IP=$(incus list elcamlot-ocaml --format csv -c 4 | cut -d' ' -f1)
 
 echo ""
 echo "==> Dev environment ready!"
-echo "    Postgres:  postgres://elcamlot:elcamlot@${PG_IP}:5432/elcamlot"
+echo "    Postgres:  postgres://elcamlot:\${PG_PASSWORD:-elcamlot}@${PG_IP}:5432/elcamlot"
 echo "    OCaml API: http://${OCAML_IP}:8080"
 echo ""
 echo "==> Starting Phoenix..."
 cd "${PROJECT_ROOT}/elcamlot"
 
 export ELCAMLOT_PG_HOST="${PG_IP}"
-export DATABASE_URL="postgres://elcamlot:elcamlot@${PG_IP}:5432/elcamlot"
+export DATABASE_URL="postgres://elcamlot:${PG_PASSWORD:-elcamlot}@${PG_IP}:5432/elcamlot"
 export ANALYTICS_URL="http://${OCAML_IP}:8080"
 
 mix phx.server

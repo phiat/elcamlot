@@ -147,7 +147,7 @@ stats:
 
 # Show connection info for all services
 info:
-    @echo "Postgres:  postgres://elcamlot:elcamlot@$(just pg-ip):5432/elcamlot"
+    @echo "Postgres:  postgres://elcamlot:$${PG_PASSWORD:-elcamlot}@$(just pg-ip):5432/elcamlot"
     @echo "Analytics: http://$(just ocaml-ip):8080"
     @echo "Phoenix:   http://localhost:4000"
 

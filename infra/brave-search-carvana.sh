@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-BRAVE_API_KEY="${BRAVE_API_KEY:-BSAltb5WrdtyiC_XRT1PWjEMXWLkNGQ}"
+BRAVE_API_KEY="${BRAVE_API_KEY:?Set BRAVE_API_KEY environment variable}"
 BRAVE_SEARCH_URL="https://api.search.brave.com/res/v1/web/search"
 RESULT_COUNT="${BRAVE_RESULT_COUNT:-20}"
 RATE_LIMIT_SLEEP="${BRAVE_RATE_SLEEP:-1.5}"
